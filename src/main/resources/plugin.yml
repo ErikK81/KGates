@@ -7,3 +7,7 @@ commands:
   kgate:
     description: Manage the portals
     usage: /kgate
+permissions:
+  kgates.admin:
+    description: Permite usar comandos administrativos do KGates
+    default: op

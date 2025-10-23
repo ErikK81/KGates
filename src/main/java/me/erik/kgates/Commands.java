@@ -36,6 +36,10 @@ public class Commands implements CommandExecutor, TabCompleter {
             sender.sendMessage(ChatColor.RED + "Apenas jogadores podem usar este comando!");
             return true;
         }
+        if (!player.hasPermission("kgates.admin")) {
+            player.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando!");
+            return true;
+        }
 
         if (args.length == 0) {
             sendUsage(player);
