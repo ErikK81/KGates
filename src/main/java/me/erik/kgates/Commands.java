@@ -112,11 +112,6 @@ public class Commands implements CommandExecutor, TabCompleter {
             return;
         }
 
-        if (builderManager.isBuilding(player.getUniqueId())) {
-            player.sendMessage(ChatColor.RED + "Você já está criando/editar outro portal!");
-            return;
-        }
-
         GateBuilderData builder = new GateBuilderData(player.getUniqueId(), id);
         builder.setType(gate.getType());
         builder.setLocA(gate.getLoc1());

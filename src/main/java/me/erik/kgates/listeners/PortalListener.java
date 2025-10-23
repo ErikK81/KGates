@@ -5,7 +5,6 @@ import me.erik.kgates.manager.GateData;
 import me.erik.kgates.manager.GateManager;
 import org.bukkit.Location;
 import org.bukkit.Particle;
-import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -17,7 +16,6 @@ import java.util.Objects;
 
 public record PortalListener(GateManager gateManager) implements Listener {
 
-    // Portal → (Player → lastTeleportTick)
     private static final Map<GateData, Map<Player, Long>> portalCooldowns = new HashMap<>();
 
     @EventHandler
@@ -30,31 +28,27 @@ public record PortalListener(GateManager gateManager) implements Listener {
 
         for (GateData gate : gateManager.getAllGates()) {
             if (!gate.canActivate(player)) continue;
-            if (!playerMeetsConditions(player, gate)) continue;
 
+            boolean allConditionsMet = gate.getConditions().stream().allMatch(c -> c.canActivate(player));
+            if (!allConditionsMet) continue;
+
+            double radius = gate.getDetectionRadius();
+            long cooldownTicks = gate.getCooldownTicks();
             Map<Player, Long> cooldowns = portalCooldowns.computeIfAbsent(gate, k -> new HashMap<>());
-            long lastTeleport = cooldowns.getOrDefault(player, -gate.getCooldownTicks());
-            if (currentTick - lastTeleport < gate.getCooldownTicks()) continue;
+            long lastTeleport = cooldowns.getOrDefault(player, -cooldownTicks);
 
-            // Teleporta se próximo de loc1 ou loc2
-            if (tryTeleport(player, to, gate.getLoc2(), cooldowns, currentTick)) break;
-            if (tryTeleport(player, to, gate.getLoc1(), cooldowns, currentTick)) break;
+            if (currentTick - lastTeleport < cooldownTicks) continue;
+
+            if (isNearCenter(to, gate.getLoc1(), radius)) {
+                teleportPlayer(player, gate.getLoc2());
+                cooldowns.put(player, currentTick);
+                break;
+            } else if (isNearCenter(to, gate.getLoc2(), radius)) {
+                teleportPlayer(player, gate.getLoc1());
+                cooldowns.put(player, currentTick);
+                break;
+            }
         }
-    }
-
-    private boolean playerMeetsConditions(Player player, GateData gate) {
-        if (gate.getConditions() == null || gate.getConditions().isEmpty()) return true;
-        return gate.getConditions().stream().allMatch(cond -> cond.canActivate(player));
-    }
-
-    private boolean tryTeleport(Player player, Location from, Location target, Map<Player, Long> cooldowns, long currentTick) {
-        double radius = 1.5; // fallback se necessário
-        if (isNearCenter(from, target, radius)) {
-            teleportPlayer(player, target);
-            cooldowns.put(player, currentTick);
-            return true;
-        }
-        return false;
     }
 
     private boolean isNearCenter(Location loc, Location blockLoc, double radius) {
@@ -63,19 +57,16 @@ public record PortalListener(GateManager gateManager) implements Listener {
         double dx = loc.getX() - (blockLoc.getBlockX() + 0.5);
         double dy = loc.getY() - (blockLoc.getBlockY() + 0.5);
         double dz = loc.getZ() - (blockLoc.getBlockZ() + 0.5);
-
         return dx * dx + dy * dy + dz * dz <= radius * radius;
     }
 
     private void teleportPlayer(Player player, Location target) {
-        Location tpLocation = target.clone().add(0.5, 1.0, 0.5);
-        tpLocation.setYaw(player.getLocation().getYaw());
-        tpLocation.setPitch(player.getLocation().getPitch());
+        Location tp = target.clone().add(0.5, 1.0, 0.5);
+        tp.setYaw(player.getLocation().getYaw());
+        tp.setPitch(player.getLocation().getPitch());
 
-        player.teleport(tpLocation);
-
-        // Efeitos visuais e sonoros
-        player.getWorld().playSound(tpLocation, Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f);
-        player.getWorld().spawnParticle(Particle.PORTAL, tpLocation, 60, 1, 1, 1, 0.1);
+        player.teleport(tp);
+        player.getWorld().playSound(tp, "minecraft:entity.enderman.teleport", 1f, 1f);
+        player.getWorld().spawnParticle(Particle.PORTAL, tp, 60, 1, 1, 1, 0.1);
     }
 }

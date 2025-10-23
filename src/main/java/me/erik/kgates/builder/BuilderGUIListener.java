@@ -7,12 +7,13 @@ import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.block.Action;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -25,7 +26,9 @@ import static me.erik.kgates.KGates.getInstance;
 
 public record BuilderGUIListener(GateBuilderManager builderManager, GateManager gateManager) implements Listener {
 
-    // --- Eventos de clique na GUI ---
+    private static final int FINALIZE_SLOT = 26;
+
+    // -------------------- Inventory Click --------------------
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
@@ -45,14 +48,14 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
 
     private void handleBuilderGUIClick(Player player, GateBuilderData builder, int slot) {
         switch (slot) {
-            case 10 -> openTypeSelection(player, builder);
+            case 10 -> openTypeSelection(player);
             case 12 -> promptPointSelection(player, builder, true);
             case 14 -> promptPointSelection(player, builder, false);
             case 16 -> promptDetectionRadius(player, builder);
             case 20 -> openConditionsGUI(player, builder);
             case 22 -> promptCustomName(player, builder);
             case 24 -> promptCooldown(player, builder);
-            case 26 -> finalizePortal(player, builder);
+            case FINALIZE_SLOT -> finalizePortal(player, builder);
         }
     }
 
@@ -67,21 +70,20 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
         builderManager.setWaitingForCondition(player.getUniqueId(), type);
     }
 
-    // --- Seleção de blocos ---
+    // -------------------- Block Click --------------------
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        if (!builderManager.isBuilding(player.getUniqueId()) || !builderManager.isWaitingForBlockClick(player.getUniqueId())) return;
-        if (event.getAction() != Action.LEFT_CLICK_BLOCK) return;
+        if (!builderManager.isBuilding(player.getUniqueId())
+                || !builderManager.isWaitingForBlockClick(player.getUniqueId())
+                || event.getAction() != Action.LEFT_CLICK_BLOCK) return;
 
         event.setCancelled(true);
         GateBuilderData builder = builderManager.getBuilder(player.getUniqueId());
         if (builder == null) return;
 
         Location loc = Objects.requireNonNull(event.getClickedBlock()).getLocation();
-        boolean isPointA = builderManager.isWaitingForPointA(player.getUniqueId());
-
-        if (isPointA) {
+        if (builderManager.isWaitingForPointA(player.getUniqueId())) {
             builder.setLocA(loc);
             builderManager.setWaitingForPointA(player.getUniqueId(), false);
             player.sendMessage(ChatColor.GREEN + "Ponto A definido!");
@@ -94,7 +96,7 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
         Bukkit.getScheduler().runTask(getInstance(), () -> openBuilderGUI(player, builder));
     }
 
-    // --- Chat para inputs ---
+    // -------------------- Chat Input --------------------
     @EventHandler
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
@@ -102,26 +104,27 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
         if (builder == null) return;
 
         String msg = event.getMessage();
+        event.setCancelled(true);
 
         if (handleConditionInput(player, builder, msg)) return;
-        if (handleGeneralInput(player, builder, msg)) return;
+        handleGeneralInput(player, builder, msg);
     }
 
     private boolean handleConditionInput(Player player, GateBuilderData builder, String msg) {
-        SimpleGateCondition.ConditionType waitingCondition = builderManager.getWaitingCondition(player.getUniqueId());
-        if (waitingCondition == null) return false;
+        SimpleGateCondition.ConditionType waiting = builderManager.getWaitingCondition(player.getUniqueId());
+        if (waiting == null) return false;
 
         try {
-            SimpleGateCondition condition = switch (waitingCondition) {
-                case PERMISSION, WEATHER -> new SimpleGateCondition(waitingCondition, msg);
-                case HEALTH -> new SimpleGateCondition(waitingCondition, Double.parseDouble(msg));
+            SimpleGateCondition condition = switch (waiting) {
+                case PERMISSION, WEATHER -> new SimpleGateCondition(waiting, msg);
+                case HEALTH -> new SimpleGateCondition(waiting, Double.parseDouble(msg));
                 case TIME -> {
                     String[] parts = msg.split("-");
                     yield new SimpleGateCondition(Long.parseLong(parts[0]), Long.parseLong(parts[1]));
                 }
             };
             builder.addCondition(condition);
-            player.sendMessage(ChatColor.GREEN + "Condição " + waitingCondition.name() + " adicionada!");
+            player.sendMessage(ChatColor.GREEN + "Condição " + waiting.name() + " adicionada!");
         } catch (Exception e) {
             player.sendMessage(ChatColor.RED + "Valor inválido. Use o formato correto.");
             return true;
@@ -160,7 +163,7 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
         return true;
     }
 
-    // --- GUI Builder ---
+    // -------------------- GUI --------------------
     public void openBuilderGUI(Player player, GateBuilderData builder) {
         Inventory inv = Bukkit.createInventory(null, 27, "✧ Portal: " + builder.getId());
 
@@ -171,16 +174,15 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
         inv.setItem(20, getConditionItem(builder));
         inv.setItem(22, makeItem(Material.NAME_TAG, ChatColor.AQUA + "Nome: " + ChatColor.YELLOW + builder.getName()));
         inv.setItem(24, makeItem(Material.CLOCK, ChatColor.AQUA + "Cooldown (ticks): " + ChatColor.YELLOW + builder.getCooldownTicks()));
-        inv.setItem(26, makeItem(Material.EMERALD_BLOCK, ChatColor.GREEN + "Finalizar Portal"));
+        inv.setItem(FINALIZE_SLOT, makeItem(Material.EMERALD_BLOCK, ChatColor.GREEN + "Finalizar Portal"));
 
         player.openInventory(inv);
     }
 
-    private static ItemStack makeItem(Material material, String name) {
-        ItemStack item = new ItemStack(material);
+    private static ItemStack makeItem(Material mat, String name) {
+        ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
-        assert meta != null;
-        meta.setDisplayName(name);
+        if (meta != null) meta.setDisplayName(name);
         item.setItemMeta(meta);
         return item;
     }
@@ -188,55 +190,53 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
     private static ItemStack makePointItem(String name, Location loc, Material mat) {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
-        assert meta != null;
-        meta.setDisplayName(name);
-        meta.setLore(List.of(loc != null ? String.format("X: %.0f Y: %.0f Z: %.0f", loc.getX(), loc.getY(), loc.getZ()) : "Não definido"));
-        item.setItemMeta(meta);
+        if (meta != null) {
+            meta.setDisplayName(name);
+            meta.setLore(List.of(loc != null ? String.format("X: %.0f Y: %.0f Z: %.0f", loc.getX(), loc.getY(), loc.getZ()) : "Não definido"));
+            item.setItemMeta(meta);
+        }
         return item;
     }
 
     private static ItemStack getConditionItem(GateBuilderData builder) {
         ItemStack item = new ItemStack(Material.IRON_BARS);
         ItemMeta meta = item.getItemMeta();
-        assert meta != null;
-        meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Condições");
-
-        List<String> lore = new ArrayList<>();
-        if (builder.getConditions().isEmpty()) lore.add("Nenhuma condição definida");
-        else builder.getConditions().forEach(c -> lore.add(ChatColor.GRAY + "- " + c.getDisplayText()));
-
-        meta.setLore(lore);
-        item.setItemMeta(meta);
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Condições");
+            List<String> lore = new ArrayList<>();
+            if (builder.getConditions().isEmpty()) lore.add("Nenhuma condição definida");
+            else builder.getConditions().forEach(c -> lore.add(ChatColor.GRAY + "- " + c.getDisplayText()));
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+        }
         return item;
     }
 
-    // --- GUI de Condições ---
     public void openConditionsGUI(Player player, GateBuilderData builder) {
         Inventory gui = Bukkit.createInventory(null, 9, "Condições do Portal");
-
         SimpleGateCondition.ConditionType[] types = SimpleGateCondition.ConditionType.values();
+
         for (int i = 0; i < types.length; i++) {
             SimpleGateCondition.ConditionType type = types[i];
             ItemStack item = new ItemStack(Material.PAPER);
             ItemMeta meta = item.getItemMeta();
-            assert meta != null;
-            meta.setDisplayName("§a" + type.name());
-
-            String currentValue = builder.getConditions().stream()
-                    .filter(c -> c.getType() == type)
-                    .findFirst()
-                    .map(SimpleGateCondition::getDisplayText)
-                    .orElse("Clique para definir valor da condição");
-
-            meta.setLore(List.of(currentValue));
-            item.setItemMeta(meta);
-            gui.setItem(i, item);
+            if (meta != null) {
+                meta.setDisplayName("§a" + type.name());
+                String val = builder.getConditions().stream()
+                        .filter(c -> c.getType() == type)
+                        .findFirst()
+                        .map(SimpleGateCondition::getDisplayText)
+                        .orElse("Clique para definir valor da condição");
+                meta.setLore(List.of(val));
+                item.setItemMeta(meta);
+                gui.setItem(i, item);
+            }
         }
 
         player.openInventory(gui);
     }
 
-    // --- Prompts ---
+    // -------------------- Prompts --------------------
     private void promptPointSelection(Player player, GateBuilderData builder, boolean isPointA) {
         builderManager.setWaitingForBlockClick(player.getUniqueId(), true);
         builderManager.setWaitingForPointA(player.getUniqueId(), isPointA);
@@ -276,7 +276,9 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
         player.closeInventory();
     }
 
-    private void openTypeSelection(Player player, GateBuilderData builder) {
+    private void openTypeSelection(Player player) {
         player.sendMessage(ChatColor.YELLOW + "Seleção de tipo ainda não implementada.");
     }
+
+
 }

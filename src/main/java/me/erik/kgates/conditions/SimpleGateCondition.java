@@ -2,7 +2,6 @@ package me.erik.kgates.conditions;
 
 import org.bukkit.World;
 import org.bukkit.entity.Player;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,46 +10,37 @@ public class SimpleGateCondition {
     public enum ConditionType { PERMISSION, WEATHER, TIME, HEALTH }
 
     private final ConditionType type;
-    private final String stringValue;
-    private final double numericValue;
-    private final long endTime;
+    private String stringValue;
+    private double numericValue;
+    private long endTime;
 
-    // Construtores públicos
     public SimpleGateCondition(ConditionType type, String value) {
-        this(type, value, 0, 0);
+        this.type = type;
+        this.stringValue = value;
     }
 
     public SimpleGateCondition(ConditionType type, double numericValue) {
-        this(type, null, numericValue, 0);
+        this.type = type;
+        this.numericValue = numericValue;
     }
 
     public SimpleGateCondition(long startTime, long endTime) {
-        this(ConditionType.TIME, null, startTime, endTime);
-    }
-
-    // Construtor privado unificado
-    private SimpleGateCondition(ConditionType type, String stringValue, double numericValue, long endTime) {
-        this.type = type;
-        this.stringValue = stringValue;
-        this.numericValue = numericValue;
+        this.type = ConditionType.TIME;
+        this.numericValue = startTime;
         this.endTime = endTime;
     }
 
-    public ConditionType getType() {
-        return type;
-    }
+    public ConditionType getType() { return type; }
 
     public boolean canActivate(Player player) {
         World world = player.getWorld();
 
         return switch (type) {
             case PERMISSION -> player.hasPermission(stringValue);
-
             case WEATHER -> {
                 String weather = stringValue == null ? "" : stringValue.toUpperCase();
                 boolean raining = world.hasStorm();
                 boolean thunder = world.isThundering();
-
                 yield switch (weather) {
                     case "SUN", "CLEAR" -> !raining && !thunder;
                     case "RAIN" -> raining && !thunder;
@@ -58,16 +48,13 @@ public class SimpleGateCondition {
                     default -> true;
                 };
             }
-
             case HEALTH -> player.getHealth() >= numericValue;
-
             case TIME -> {
                 long currentTime = world.getTime();
                 long start = (long) numericValue;
                 long end = endTime;
-
-                // Intervalo que cruza meia-noite
-                yield (start <= end) ? (currentTime >= start && currentTime <= end)
+                yield (start <= end)
+                        ? (currentTime >= start && currentTime <= end)
                         : (currentTime >= start || currentTime <= end);
             }
         };

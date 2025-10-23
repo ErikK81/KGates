@@ -1,8 +1,8 @@
 package me.erik.kgates.conditions;
 
 import me.erik.kgates.builder.GateBuilderData;
-import me.erik.kgates.builder.GateBuilderManager;
 import me.erik.kgates.manager.GateManager;
+import me.erik.kgates.builder.GateBuilderManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -18,59 +18,41 @@ public record ConditionChatListener(GateBuilderManager builderManager, GateManag
     public void onChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         GateBuilderData builder = builderManager.getBuilder(player.getUniqueId());
-        if (builder == null || builder.getWaitingConditionType() == null) return;
+        if (builder == null) return;
+
+        SimpleGateCondition.ConditionType waitingType = builder.getWaitingConditionType();
+        if (waitingType == null) return;
 
         event.setCancelled(true);
         String msg = event.getMessage().trim();
 
-        if (msg.equalsIgnoreCase("cancelar")) {
-            cancelConditionInput(builder, player);
+        if ("cancelar".equalsIgnoreCase(msg)) {
+            builder.setWaitingConditionType(null);
+            player.sendMessage(ChatColor.RED + "Entrada de condição cancelada.");
+            Bukkit.getScheduler().runTask(getInstance(), () -> builder.openConditionGUI(player));
             return;
         }
 
-        addConditionFromInput(builder, player, msg);
-    }
-
-    private void cancelConditionInput(GateBuilderData builder, Player player) {
-        builder.setWaitingConditionType(null);
-        player.sendMessage(ChatColor.RED + "Entrada de condição cancelada.");
-        reopenConditionGUI(builder, player);
-    }
-
-    private void addConditionFromInput(GateBuilderData builder, Player player, String input) {
-        SimpleGateCondition.ConditionType type = builder.getWaitingConditionType();
-
         try {
-            SimpleGateCondition condition = switch (type) {
-                case PERMISSION, WEATHER -> new SimpleGateCondition(type, input);
-                case HEALTH -> new SimpleGateCondition(type, Double.parseDouble(input));
-                case TIME -> parseTimeCondition(input);
+            SimpleGateCondition condition = switch (waitingType) {
+                case PERMISSION, WEATHER -> new SimpleGateCondition(waitingType, msg);
+                case HEALTH -> new SimpleGateCondition(waitingType, Double.parseDouble(msg));
+                case TIME -> {
+                    String[] parts = msg.split("-");
+                    if (parts.length != 2) throw new IllegalArgumentException("Formato inválido! Use: inicio-fim (ex: 6000-18000)");
+                    yield new SimpleGateCondition(Long.parseLong(parts[0]), Long.parseLong(parts[1]));
+                }
             };
 
             builder.addCondition(condition);
             builder.setWaitingConditionType(null);
-
             gateManager.addGateFromBuilder(builder);
 
-            player.sendMessage(ChatColor.GREEN + "Condição adicionada: " + ChatColor.YELLOW + type.name());
-            reopenConditionGUI(builder, player);
+            player.sendMessage(ChatColor.GREEN + "Condição adicionada: " + ChatColor.YELLOW + waitingType.name());
+            Bukkit.getScheduler().runTask(getInstance(), () -> builder.openConditionGUI(player));
 
-        } catch (Exception e) {
-            player.sendMessage(ChatColor.RED + "Valor inválido para condição " + type.name() + ".");
+        } catch (Exception ex) {
+            player.sendMessage(ChatColor.RED + "Valor inválido para condição " + waitingType.name() + ".");
         }
-    }
-
-    private SimpleGateCondition parseTimeCondition(String input) {
-        String[] parts = input.split("-");
-        if (parts.length != 2) {
-            throw new IllegalArgumentException("Formato inválido! Use: inicio-fim (ex: 6000-18000)");
-        }
-        long start = Long.parseLong(parts[0]);
-        long end = Long.parseLong(parts[1]);
-        return new SimpleGateCondition(start, end);
-    }
-
-    private void reopenConditionGUI(GateBuilderData builder, Player player) {
-        Bukkit.getScheduler().runTask(getInstance(), () -> builder.openConditionGUI(player));
     }
 }
