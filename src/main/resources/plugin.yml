@@ -1,9 +1,9 @@
 name: KGates
-version: 1.0
+version: 1.5
 main: me.erik.kgates.KGates
 api-version: 1.21
 author: ErikK81
 commands:
   kgate:
     description: Manage the portals
-    usage: /kgate <create|remove|list|tp>
+    usage: /kgate

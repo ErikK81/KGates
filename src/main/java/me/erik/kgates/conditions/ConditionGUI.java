@@ -28,7 +28,7 @@ public record ConditionGUI(GateBuilderData builderData, BuilderGUIListener build
         inv.setItem(12, makeConditionItem(SimpleGateCondition.ConditionType.TIME));
         inv.setItem(14, makeConditionItem(SimpleGateCondition.ConditionType.PERMISSION));
         inv.setItem(16, makeConditionItem(SimpleGateCondition.ConditionType.HEALTH));
-        inv.setItem(18, makeItem(Material.ARROW, ChatColor.AQUA + "Voltar"));
+        inv.setItem(18, makeItem(ChatColor.AQUA + "Voltar"));
 
         player.openInventory(inv);
         Bukkit.getPluginManager().registerEvents(this, getInstance());
@@ -47,22 +47,27 @@ public record ConditionGUI(GateBuilderData builderData, BuilderGUIListener build
         if (meta != null) {
             meta.setDisplayName(ChatColor.AQUA + type.name());
 
-            List<String> lore = new ArrayList<>();
-            boolean hasCondition = false;
-            for (SimpleGateCondition cond : builderData.getConditions()) {
-                if (cond.getType() == type) {
-                    lore.add(ChatColor.GREEN + "Ativa: " + cond.getDisplayText());
-                    hasCondition = true;
-                }
-            }
-            if (!hasCondition) lore.add(ChatColor.GRAY + "Nenhuma condição definida");
-
-            lore.add("");
-            lore.add(ChatColor.GRAY + "Clique esquerdo para editar, direito para remover");
+            List<String> lore = getStrings(type);
             meta.setLore(lore);
             item.setItemMeta(meta);
         }
         return item;
+    }
+
+    private List<String> getStrings(SimpleGateCondition.ConditionType type) {
+        List<String> lore = new ArrayList<>();
+        boolean hasCondition = false;
+        for (SimpleGateCondition cond : builderData.getConditions()) {
+            if (cond.getType() == type) {
+                lore.add(ChatColor.GREEN + "Ativa: " + cond.getDisplayText());
+                hasCondition = true;
+            }
+        }
+        if (!hasCondition) lore.add(ChatColor.GRAY + "Nenhuma condição definida");
+
+        lore.add("");
+        lore.add(ChatColor.GRAY + "Clique esquerdo para editar, direito para remover");
+        return lore;
     }
 
     @EventHandler
@@ -104,8 +109,8 @@ public record ConditionGUI(GateBuilderData builderData, BuilderGUIListener build
         HandlerList.unregisterAll(this);
     }
 
-    private static ItemStack makeItem(Material mat, String name) {
-        ItemStack item = new ItemStack(mat);
+    private static ItemStack makeItem(String name) {
+        ItemStack item = new ItemStack(Material.ARROW);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(name);

@@ -65,7 +65,5 @@ public record PortalListener(GateManager gateManager) implements Listener {
         tp.setPitch(player.getLocation().getPitch());
 
         player.teleport(tp);
-        player.getWorld().playSound(tp, "minecraft:entity.enderman.teleport", 1f, 1f);
-        player.getWorld().spawnParticle(Particle.PORTAL, tp, 60, 1, 1, 1, 0.1);
     }
 }

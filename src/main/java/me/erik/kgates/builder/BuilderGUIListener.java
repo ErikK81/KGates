@@ -21,6 +21,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import static me.erik.kgates.KGates.getInstance;
 
@@ -39,16 +40,13 @@ public class BuilderGUIListener implements Listener {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
-        if (event.getClickedInventory() == null) return;
+        if (event.getClickedInventory() == null || !event.getView().getTitle().startsWith("✧ Portal: ")) return;
 
-        String title = event.getView().getTitle();
         event.setCancelled(true);
-
         GateBuilderData builder = builderManager.getBuilder(player.getUniqueId());
         if (builder == null) return;
 
-        int slot = event.getRawSlot();
-        if (title.startsWith("✧ Portal: ")) handleBuilderGUIClick(player, builder, slot);
+        handleBuilderGUIClick(player, builder, event.getRawSlot());
     }
 
     private void handleBuilderGUIClick(Player player, GateBuilderData builder, int slot) {
@@ -56,10 +54,10 @@ public class BuilderGUIListener implements Listener {
             case 10 -> openTypeSelection(player);
             case 12 -> promptPointSelection(player, builder, true);
             case 14 -> promptPointSelection(player, builder, false);
-            case 16 -> promptDetectionRadius(player, builder);
+            case 16 -> promptNumericInput(player, builder, "detection");
             case 20 -> openConditionsGUI(player, builder);
-            case 22 -> promptCustomName(player, builder);
-            case 24 -> promptCooldown(player, builder);
+            case 22 -> promptTextInput(player);
+            case 24 -> promptNumericInput(player, builder, "cooldown");
             case FINALIZE_SLOT -> finalizePortal(player, builder);
         }
     }
@@ -68,25 +66,28 @@ public class BuilderGUIListener implements Listener {
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        if (!builderManager.isBuilding(player.getUniqueId())
-                || !builderManager.isWaitingForBlockClick(player.getUniqueId())
+        UUID id = player.getUniqueId();
+
+        if (!builderManager.isBuilding(id)
+                || !builderManager.isWaitingForBlockClick(id)
                 || event.getAction() != Action.LEFT_CLICK_BLOCK) return;
 
         event.setCancelled(true);
-        GateBuilderData builder = builderManager.getBuilder(player.getUniqueId());
+        GateBuilderData builder = builderManager.getBuilder(id);
         if (builder == null) return;
 
         Location loc = Objects.requireNonNull(event.getClickedBlock()).getLocation();
-        if (builderManager.isWaitingForPointA(player.getUniqueId())) {
+        boolean isPointA = builderManager.isWaitingForPointA(id);
+
+        if (isPointA) {
             builder.setLocA(loc);
-            builderManager.setWaitingForPointA(player.getUniqueId(), false);
             player.sendMessage(ChatColor.GREEN + "Ponto A definido!");
         } else {
             builder.setLocB(loc);
-            builderManager.setWaitingForBlockClick(player.getUniqueId(), false);
             player.sendMessage(ChatColor.RED + "Ponto B definido!");
         }
 
+        builderManager.setWaitingForBlockClick(id, false);
         Bukkit.getScheduler().runTask(getInstance(), () -> openBuilderGUI(player, builder));
     }
 
@@ -97,21 +98,21 @@ public class BuilderGUIListener implements Listener {
         GateBuilderData builder = builderManager.getBuilder(player.getUniqueId());
         if (builder == null) return;
 
-        String msg = event.getMessage();
         event.setCancelled(true);
+        String msg = event.getMessage();
 
         if (handleConditionInput(player, builder, msg)) return;
         handleGeneralInput(player, builder, msg);
     }
 
     private boolean handleConditionInput(Player player, GateBuilderData builder, String msg) {
-        SimpleGateCondition.ConditionType waiting = builder.getWaitingConditionType();
+        var waiting = builder.getWaitingConditionType();
         if (waiting == null) return false;
 
         if (msg.equalsIgnoreCase("cancelar")) {
             builder.setWaitingConditionType(null);
             player.sendMessage(ChatColor.RED + "Entrada de condição cancelada.");
-            Bukkit.getScheduler().runTask(getInstance(), () -> openBuilderGUI(player, builder));
+            reopenGUI(player, builder);
             return true;
         }
 
@@ -129,28 +130,26 @@ public class BuilderGUIListener implements Listener {
             player.sendMessage(ChatColor.GREEN + "Condição " + waiting.name() + " adicionada!");
         } catch (Exception e) {
             player.sendMessage(ChatColor.RED + "Valor inválido. Use o formato correto.");
-            return true;
         }
 
         builder.setWaitingConditionType(null);
-        Bukkit.getScheduler().runTask(getInstance(), () -> openBuilderGUI(player, builder));
+        reopenGUI(player, builder);
         return true;
     }
 
     private void handleGeneralInput(Player player, GateBuilderData builder, String msg) {
-        if (!builderManager.isWaitingForName(player.getUniqueId())) return;
+        UUID id = player.getUniqueId();
+        if (!builderManager.isWaitingForName(id)) return;
 
         try {
             if (builder.isAwaitingRadius()) {
-                double radius = Double.parseDouble(msg);
-                builder.setDetectionRadius(radius);
+                builder.setDetectionRadius(Double.parseDouble(msg));
                 builder.setAwaitingRadius(false);
-                player.sendMessage(ChatColor.GREEN + "Detection radius definido: " + ChatColor.YELLOW + radius);
+                player.sendMessage(ChatColor.GREEN + "Detection radius definido!");
             } else if (builder.isAwaitingCooldown()) {
-                long ticks = Long.parseLong(msg);
-                builder.setCooldownTicks(ticks);
+                builder.setCooldownTicks(Long.parseLong(msg));
                 builder.setAwaitingCooldown(false);
-                player.sendMessage(ChatColor.GREEN + "Cooldown definido: " + ChatColor.YELLOW + ticks + " ticks");
+                player.sendMessage(ChatColor.GREEN + "Cooldown definido!");
             } else {
                 builder.setName(msg);
                 player.sendMessage(ChatColor.GREEN + "Nome definido como: " + ChatColor.YELLOW + msg);
@@ -160,59 +159,60 @@ public class BuilderGUIListener implements Listener {
             return;
         }
 
-        builderManager.setWaitingForName(player.getUniqueId(), false);
-        Bukkit.getScheduler().runTask(getInstance(), () -> openBuilderGUI(player, builder));
+        builderManager.setWaitingForName(id, false);
+        reopenGUI(player, builder);
     }
 
     // -------------------- GUI --------------------
     public void openBuilderGUI(Player player, GateBuilderData builder) {
         Inventory inv = Bukkit.createInventory(null, 27, "✧ Portal: " + builder.getId());
 
-        inv.setItem(10, makeItem(Material.PAPER, ChatColor.AQUA + "Tipo: " + ChatColor.YELLOW + builder.getType()));
-        inv.setItem(12, makePointItem(ChatColor.GREEN + "Ponto A", builder.getLocA(), Material.GREEN_WOOL));
-        inv.setItem(14, makePointItem(ChatColor.RED + "Ponto B", builder.getLocB(), Material.RED_WOOL));
-        inv.setItem(16, makeItem(Material.LIME_DYE, ChatColor.AQUA + "Detection Radius: " + ChatColor.YELLOW + builder.getDetectionRadius()));
-        inv.setItem(20, makeConditionsSummary(builder));
-        inv.setItem(22, makeItem(Material.NAME_TAG, ChatColor.AQUA + "Nome: " + ChatColor.YELLOW + builder.getName()));
-        inv.setItem(24, makeItem(Material.CLOCK, ChatColor.AQUA + "Cooldown (ticks): " + ChatColor.YELLOW + builder.getCooldownTicks()));
-        inv.setItem(FINALIZE_SLOT, makeItem(Material.EMERALD_BLOCK, ChatColor.GREEN + "Finalizar Portal"));
+        inv.setItem(10, item(Material.PAPER, ChatColor.AQUA + "Tipo: " + ChatColor.YELLOW + builder.getType()));
+        inv.setItem(12, pointItem(ChatColor.GREEN + "Ponto A", builder.getLocA(), Material.GREEN_WOOL));
+        inv.setItem(14, pointItem(ChatColor.RED + "Ponto B", builder.getLocB(), Material.RED_WOOL));
+        inv.setItem(16, item(Material.LIME_DYE, ChatColor.AQUA + "Detection Radius: " + ChatColor.YELLOW + builder.getDetectionRadius()));
+        inv.setItem(20, conditionSummary(builder));
+        inv.setItem(22, item(Material.NAME_TAG, ChatColor.AQUA + "Nome: " + ChatColor.YELLOW + builder.getName()));
+        inv.setItem(24, item(Material.CLOCK, ChatColor.AQUA + "Cooldown: " + ChatColor.YELLOW + builder.getCooldownTicks() + " ticks"));
+        inv.setItem(FINALIZE_SLOT, item(Material.EMERALD_BLOCK, ChatColor.GREEN + "Finalizar Portal"));
 
         player.openInventory(inv);
     }
 
-    private static ItemStack makeItem(Material mat, String name) {
-        ItemStack item = new ItemStack(mat);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) meta.setDisplayName(name);
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private static ItemStack makePointItem(String name, Location loc, Material mat) {
+    private static ItemStack item(Material mat, String name) {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(name);
-            meta.setLore(List.of(loc != null ? String.format("X: %.0f Y: %.0f Z: %.0f", loc.getX(), loc.getY(), loc.getZ()) : "Não definido"));
             item.setItemMeta(meta);
         }
         return item;
     }
 
-    private static ItemStack makeConditionsSummary(GateBuilderData builder) {
+    private static ItemStack pointItem(String name, Location loc, Material mat) {
+        ItemStack item = new ItemStack(mat);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(name);
+            meta.setLore(List.of(loc != null ?
+                    String.format("X: %.0f Y: %.0f Z: %.0f", loc.getX(), loc.getY(), loc.getZ()) :
+                    "Não definido"));
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    private static ItemStack conditionSummary(GateBuilderData builder) {
         ItemStack item = new ItemStack(Material.IRON_BARS);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Condições");
             List<String> lore = new ArrayList<>();
-
             if (builder.getConditions().isEmpty()) {
                 lore.add(ChatColor.GRAY + "Nenhuma condição definida");
             } else {
-                // Ordena ou apenas percorre para mostrar todas
-                for (SimpleGateCondition cond : builder.getConditions()) {
-                    lore.add(ChatColor.GREEN + "- " + cond.getDisplayText());
-                }
+                builder.getConditions().forEach(cond ->
+                        lore.add(ChatColor.GREEN + "- " + cond.getDisplayText()));
             }
             lore.add("");
             lore.add(ChatColor.GRAY + "Clique para abrir GUI de condições");
@@ -222,35 +222,35 @@ public class BuilderGUIListener implements Listener {
         return item;
     }
 
-
-
     // -------------------- Prompts --------------------
     private void promptPointSelection(Player player, GateBuilderData builder, boolean isPointA) {
-        builderManager.setWaitingForBlockClick(player.getUniqueId(), true);
-        builderManager.setWaitingForPointA(player.getUniqueId(), isPointA);
+        UUID id = player.getUniqueId();
+        builderManager.setWaitingForBlockClick(id, true);
+        builderManager.setWaitingForPointA(id, isPointA);
         player.closeInventory();
-        player.sendMessage(ChatColor.YELLOW + "Clique com o botão esquerdo em um bloco para definir " +
-                (isPointA ? "Ponto A" : "Ponto B") + "!");
+        player.sendMessage(ChatColor.YELLOW + "Clique em um bloco para definir " + (isPointA ? "Ponto A" : "Ponto B") + ".");
     }
 
-    private void promptCustomName(Player player, GateBuilderData builder) {
+    private void promptTextInput(Player player) {
         builderManager.setWaitingForName(player.getUniqueId(), true);
         player.closeInventory();
-        player.sendMessage(ChatColor.AQUA + "Digite o nome do portal no chat:");
+        player.sendMessage(ChatColor.AQUA + "Digite o " + "nome do portal" + " no chat:");
     }
 
-    private void promptDetectionRadius(Player player, GateBuilderData builder) {
+    private void promptNumericInput(Player player, GateBuilderData builder, String type) {
         builderManager.setWaitingForName(player.getUniqueId(), true);
-        builder.setAwaitingRadius(true);
         player.closeInventory();
-        player.sendMessage(ChatColor.AQUA + "Digite o detection radius do portal no chat:");
-    }
 
-    private void promptCooldown(Player player, GateBuilderData builder) {
-        builderManager.setWaitingForName(player.getUniqueId(), true);
-        builder.setAwaitingCooldown(true);
-        player.closeInventory();
-        player.sendMessage(ChatColor.AQUA + "Digite o cooldown do portal (em ticks) no chat:");
+        switch (type.toLowerCase()) {
+            case "detection" -> {
+                builder.setAwaitingRadius(true);
+                player.sendMessage(ChatColor.AQUA + "Digite o detection radius do portal no chat:");
+            }
+            case "cooldown" -> {
+                builder.setAwaitingCooldown(true);
+                player.sendMessage(ChatColor.AQUA + "Digite o cooldown do portal (em ticks) no chat:");
+            }
+        }
     }
 
     private void finalizePortal(Player player, GateBuilderData builder) {
@@ -264,12 +264,15 @@ public class BuilderGUIListener implements Listener {
         player.closeInventory();
     }
 
+    private void reopenGUI(Player player, GateBuilderData builder) {
+        Bukkit.getScheduler().runTask(getInstance(), () -> openBuilderGUI(player, builder));
+    }
+
     private void openTypeSelection(Player player) {
         player.sendMessage(ChatColor.YELLOW + "Seleção de tipo ainda não implementada.");
     }
 
     public void openConditionsGUI(Player player, GateBuilderData builder) {
-        ConditionGUI gui = new ConditionGUI(builder, this);
-        gui.openMain(player);
+        new ConditionGUI(builder, this).openMain(player);
     }
 }

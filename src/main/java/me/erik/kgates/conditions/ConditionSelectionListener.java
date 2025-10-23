@@ -5,7 +5,6 @@ import me.erik.kgates.builder.BuilderGUIListener;
 import me.erik.kgates.builder.GateBuilderData;
 import me.erik.kgates.builder.GateBuilderManager;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.event.EventHandler;
@@ -54,7 +53,6 @@ public record ConditionSelectionListener(GateBuilderManager builderManager, Gate
         // clique direito = remover condição
         if (e.isRightClick()) {
             builder.removeCondition(type);
-            player.sendMessage(ChatColor.RED + "Condição " + type.name() + " removida!");
             // reabre GUI de condições (ConditionGUI) — essa GUI deve estar registrada separadamente
             ConditionGUI gui = new ConditionGUI(builder, parent);
             // re-abrir a GUI de condições (registrando temporariamente a GUI listener original)
