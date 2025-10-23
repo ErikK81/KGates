@@ -33,11 +33,11 @@ public class Commands implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(ChatColor.RED + "Apenas jogadores podem usar este comando!");
+            sender.sendMessage(ChatColor.RED + "Only players can use this command!");
             return true;
         }
         if (!player.hasPermission("kgates.admin")) {
-            player.sendMessage(ChatColor.RED + "Você não tem permissão para usar este comando!");
+            player.sendMessage(ChatColor.RED + "You do not have permission to use this command!");
             return true;
         }
 
@@ -59,52 +59,51 @@ public class Commands implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    // ---------------- CRIAÇÃO DE PORTAL ----------------
+    // ---------------- CREATE GATE ----------------
 
     private void handleCreate(Player player, String[] args) {
         if (args.length < 2) {
-            player.sendMessage(ChatColor.RED + "Uso: /kgate create <id>");
+            player.sendMessage(ChatColor.RED + "Usage: /kgate create <id>");
             return;
         }
 
         String id = args[1].toLowerCase();
 
         if (gateManager.getGate(id) != null) {
-            player.sendMessage(ChatColor.RED + "Já existe um portal com o ID '" + id + "'!");
+            player.sendMessage(ChatColor.RED + "A gate with ID '" + id + "' already exists!");
             return;
         }
 
         GateBuilderData builder = new GateBuilderData(player.getUniqueId(), id);
         builderManager.startBuilding(builder);
 
-        player.sendMessage(ChatColor.GREEN + "Criação do portal '" + ChatColor.YELLOW + id + ChatColor.GREEN + "' iniciada!");
+        player.sendMessage(ChatColor.GREEN + "Gate '" + ChatColor.YELLOW + id + ChatColor.GREEN + "' creation started!");
         guiListener.openBuilderGUI(player, builder);
     }
 
-
-    // ---------------- REMOVER ----------------
+    // ---------------- REMOVE ----------------
 
     private void handleRemove(Player player, String[] args) {
         if (args.length < 2) {
-            player.sendMessage(ChatColor.RED + "Uso: /kgate remove <id>");
+            player.sendMessage(ChatColor.RED + "Usage: /kgate remove <id>");
             return;
         }
 
         String id = args[1].toLowerCase();
         if (gateManager.getGate(id) == null) {
-            player.sendMessage(ChatColor.RED + "Nenhum portal encontrado com o ID '" + id + "'.");
+            player.sendMessage(ChatColor.RED + "No gate found with ID '" + id + "'.");
             return;
         }
 
         gateManager.removeGate(id);
-        player.sendMessage(ChatColor.GREEN + "Portal '" + ChatColor.YELLOW + id + ChatColor.GREEN + "' removido com sucesso!");
+        player.sendMessage(ChatColor.GREEN + "Gate '" + ChatColor.YELLOW + id + ChatColor.GREEN + "' removed successfully!");
     }
 
-    // ---------------- EDITAR ----------------
+    // ---------------- EDIT ----------------
 
     private void handleEdit(Player player, String[] args) {
         if (args.length < 2) {
-            player.sendMessage(ChatColor.RED + "Uso: /kgate edit <id>");
+            player.sendMessage(ChatColor.RED + "Usage: /kgate edit <id>");
             return;
         }
 
@@ -112,7 +111,7 @@ public class Commands implements CommandExecutor, TabCompleter {
         GateData gate = gateManager.getGate(id);
 
         if (gate == null) {
-            player.sendMessage(ChatColor.RED + "Nenhum portal encontrado com o ID '" + id + "'.");
+            player.sendMessage(ChatColor.RED + "No gate found with ID '" + id + "'.");
             return;
         }
 
@@ -125,24 +124,22 @@ public class Commands implements CommandExecutor, TabCompleter {
 
         builderManager.startBuilding(builder);
 
-        player.sendMessage(ChatColor.AQUA + "Abrindo GUI para edição do portal: " + ChatColor.YELLOW + id);
+        player.sendMessage(ChatColor.AQUA + "Opening GUI to edit gate: " + ChatColor.YELLOW + id);
         guiListener.openBuilderGUI(player, builder);
     }
 
-
-
-    // ---------------- LISTAGEM ----------------
+    // ---------------- BROWSE ----------------
 
     private void handleBrowse(Player player) {
-        player.sendMessage(ChatColor.GOLD + "Abrindo lista de portais...");
-        // TODO: abrir GUI de listagem de portais
+        player.sendMessage(ChatColor.GOLD + "Opening gate list...");
+        // TODO: open gate browsing GUI
     }
 
-    // ---------------- TELEPORTE ----------------
+    // ---------------- TELEPORT ----------------
 
     private void handleGo(Player player, String[] args) {
         if (args.length < 3) {
-            player.sendMessage(ChatColor.RED + "Uso: /kgate go <nome> <1/2>");
+            player.sendMessage(ChatColor.RED + "Usage: /kgate go <id> <1/2>");
             return;
         }
 
@@ -150,31 +147,30 @@ public class Commands implements CommandExecutor, TabCompleter {
         String pointStr = args[2];
 
         if (!pointStr.equals("1") && !pointStr.equals("2")) {
-            player.sendMessage(ChatColor.RED + "O ponto deve ser '1' ou '2'.");
+            player.sendMessage(ChatColor.RED + "Point must be '1' or '2'.");
             return;
         }
 
         GateData gate = gateManager.getGate(name);
         if (gate == null) {
-            player.sendMessage(ChatColor.RED + "Nenhum portal encontrado com o nome: " + name);
+            player.sendMessage(ChatColor.RED + "No gate found with ID: " + name);
             return;
         }
 
         int point = Integer.parseInt(pointStr);
-
-        player.sendMessage(ChatColor.GREEN + "Teleportado para o ponto " + ChatColor.YELLOW + point + ChatColor.GREEN + " do portal " + ChatColor.YELLOW + name + ChatColor.GREEN + "!");
+        player.sendMessage(ChatColor.GREEN + "Teleported to point " + ChatColor.YELLOW + point + ChatColor.GREEN +
+                " of gate " + ChatColor.YELLOW + name + ChatColor.GREEN + "!");
     }
 
-
-    // ---------------- USO ----------------
+    // ---------------- USAGE ----------------
 
     private void sendUsage(Player player) {
-        player.sendMessage(ChatColor.GOLD + "Comandos do KGates:");
-        player.sendMessage(ChatColor.YELLOW + "/kgate create <id> " + ChatColor.GRAY + "- Cria um novo portal");
-        player.sendMessage(ChatColor.YELLOW + "/kgate remove <id> " + ChatColor.GRAY + "- Remove um portal existente");
-        player.sendMessage(ChatColor.YELLOW + "/kgate edit <id> " + ChatColor.GRAY + "- Edita um portal");
-        player.sendMessage(ChatColor.YELLOW + "/kgate browse " + ChatColor.GRAY + "- Lista todos os portais");
-        player.sendMessage(ChatColor.YELLOW + "/kgate go <id> <1/2> " + ChatColor.GRAY + "- Vai até um dos pontos do portal");
+        player.sendMessage(ChatColor.GOLD + "KGates Commands:");
+        player.sendMessage(ChatColor.YELLOW + "/kgate create <id> " + ChatColor.GRAY + "- Create a new gate");
+        player.sendMessage(ChatColor.YELLOW + "/kgate remove <id> " + ChatColor.GRAY + "- Remove an existing gate");
+        player.sendMessage(ChatColor.YELLOW + "/kgate edit <id> " + ChatColor.GRAY + "- Edit a gate");
+        player.sendMessage(ChatColor.YELLOW + "/kgate browse " + ChatColor.GRAY + "- List all gates");
+        player.sendMessage(ChatColor.YELLOW + "/kgate go <id> <1/2> " + ChatColor.GRAY + "- Teleport to a gate point");
     }
 
     // ---------------- TAB COMPLETE ----------------
@@ -193,7 +189,7 @@ public class Commands implements CommandExecutor, TabCompleter {
             String sub = args[0].toLowerCase();
             if (sub.equals("remove") || sub.equals("edit") || sub.equals("go")) {
                 gateManager.getAllGates().stream()
-                        .map(GateData::getId) // transforma GateData em String
+                        .map(GateData::getId)
                         .forEach(completions::add);
             }
         } else if (args.length == 3 && args[0].equalsIgnoreCase("go")) {

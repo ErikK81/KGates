@@ -1,10 +1,8 @@
 package me.erik.kgates;
 
 import me.erik.kgates.builder.BuilderGUIListener;
-import me.erik.kgates.builder.GateBuilderData;
 import me.erik.kgates.builder.GateBuilderManager;
 import me.erik.kgates.conditions.ConditionChatListener;
-import me.erik.kgates.conditions.ConditionGUI;
 import me.erik.kgates.listeners.PortalListener;
 import me.erik.kgates.manager.GateManager;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -47,11 +45,5 @@ public final class KGates extends JavaPlugin {
     public static KGates getInstance() {
         return instance;
     }
-    public GateManager getGateManager() {
-        return gateManager;
-    }
 
-    public GateBuilderManager getBuilderManager() {
-        return builderManager;
-    }
 }

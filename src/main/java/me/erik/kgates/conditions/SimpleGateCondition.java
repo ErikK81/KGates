@@ -94,10 +94,10 @@ public class SimpleGateCondition {
 
     public String getDisplayText() {
         return switch (type) {
-            case PERMISSION -> "Permissão necessária: " + stringValue;
-            case WEATHER -> "Clima: " + stringValue;
-            case HEALTH -> "Vida mínima: " + numericValue;
-            case TIME -> "Horário: " + numericValue + " → " + endTime;
+            case PERMISSION -> "Permission needed: " + stringValue;
+            case WEATHER -> "Weather: " + stringValue;
+            case HEALTH -> "Minimum health: " + numericValue;
+            case TIME -> "Time: " + numericValue + " → " + endTime;
         };
     }
 }

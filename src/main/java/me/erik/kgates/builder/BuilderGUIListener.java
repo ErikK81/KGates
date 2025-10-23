@@ -81,10 +81,10 @@ public class BuilderGUIListener implements Listener {
 
         if (isPointA) {
             builder.setLocA(loc);
-            player.sendMessage(ChatColor.GREEN + "Ponto A definido!");
+            player.sendMessage(ChatColor.GREEN + "Point A set!");
         } else {
             builder.setLocB(loc);
-            player.sendMessage(ChatColor.RED + "Ponto B definido!");
+            player.sendMessage(ChatColor.RED + "Point B set!");
         }
 
         builderManager.setWaitingForBlockClick(id, false);
@@ -109,9 +109,9 @@ public class BuilderGUIListener implements Listener {
         var waiting = builder.getWaitingConditionType();
         if (waiting == null) return false;
 
-        if (msg.equalsIgnoreCase("cancelar")) {
+        if (msg.equalsIgnoreCase("cancel")) {
             builder.setWaitingConditionType(null);
-            player.sendMessage(ChatColor.RED + "Entrada de condição cancelada.");
+            player.sendMessage(ChatColor.RED + "Condition input canceled.");
             reopenGUI(player, builder);
             return true;
         }
@@ -127,9 +127,9 @@ public class BuilderGUIListener implements Listener {
                 }
             };
             builder.addCondition(condition);
-            player.sendMessage(ChatColor.GREEN + "Condição " + waiting.name() + " adicionada!");
+            player.sendMessage(ChatColor.GREEN + "Condition " + waiting.name() + " added!");
         } catch (Exception e) {
-            player.sendMessage(ChatColor.RED + "Valor inválido. Use o formato correto.");
+            player.sendMessage(ChatColor.RED + "Invalid value. Use the correct format.");
         }
 
         builder.setWaitingConditionType(null);
@@ -145,17 +145,17 @@ public class BuilderGUIListener implements Listener {
             if (builder.isAwaitingRadius()) {
                 builder.setDetectionRadius(Double.parseDouble(msg));
                 builder.setAwaitingRadius(false);
-                player.sendMessage(ChatColor.GREEN + "Detection radius definido!");
+                player.sendMessage(ChatColor.GREEN + "Detection radius set!");
             } else if (builder.isAwaitingCooldown()) {
                 builder.setCooldownTicks(Long.parseLong(msg));
                 builder.setAwaitingCooldown(false);
-                player.sendMessage(ChatColor.GREEN + "Cooldown definido!");
+                player.sendMessage(ChatColor.GREEN + "Cooldown set!");
             } else {
                 builder.setName(msg);
-                player.sendMessage(ChatColor.GREEN + "Nome definido como: " + ChatColor.YELLOW + msg);
+                player.sendMessage(ChatColor.GREEN + "Portal name set to: " + ChatColor.YELLOW + msg);
             }
         } catch (NumberFormatException e) {
-            player.sendMessage(ChatColor.RED + "Valor inválido. Tente novamente.");
+            player.sendMessage(ChatColor.RED + "Invalid number. Please try again.");
             return;
         }
 
@@ -167,14 +167,14 @@ public class BuilderGUIListener implements Listener {
     public void openBuilderGUI(Player player, GateBuilderData builder) {
         Inventory inv = Bukkit.createInventory(null, 27, "✧ Portal: " + builder.getId());
 
-        inv.setItem(10, item(Material.PAPER, ChatColor.AQUA + "Tipo: " + ChatColor.YELLOW + builder.getType()));
-        inv.setItem(12, pointItem(ChatColor.GREEN + "Ponto A", builder.getLocA(), Material.GREEN_WOOL));
-        inv.setItem(14, pointItem(ChatColor.RED + "Ponto B", builder.getLocB(), Material.RED_WOOL));
+        inv.setItem(10, item(Material.PAPER, ChatColor.AQUA + "Type: " + ChatColor.YELLOW + builder.getType()));
+        inv.setItem(12, pointItem(ChatColor.GREEN + "Point A", builder.getLocA(), Material.GREEN_WOOL));
+        inv.setItem(14, pointItem(ChatColor.RED + "Point B", builder.getLocB(), Material.RED_WOOL));
         inv.setItem(16, item(Material.LIME_DYE, ChatColor.AQUA + "Detection Radius: " + ChatColor.YELLOW + builder.getDetectionRadius()));
         inv.setItem(20, conditionSummary(builder));
-        inv.setItem(22, item(Material.NAME_TAG, ChatColor.AQUA + "Nome: " + ChatColor.YELLOW + builder.getName()));
+        inv.setItem(22, item(Material.NAME_TAG, ChatColor.AQUA + "Name: " + ChatColor.YELLOW + builder.getName()));
         inv.setItem(24, item(Material.CLOCK, ChatColor.AQUA + "Cooldown: " + ChatColor.YELLOW + builder.getCooldownTicks() + " ticks"));
-        inv.setItem(FINALIZE_SLOT, item(Material.EMERALD_BLOCK, ChatColor.GREEN + "Finalizar Portal"));
+        inv.setItem(FINALIZE_SLOT, item(Material.EMERALD_BLOCK, ChatColor.GREEN + "Finalize Portal"));
 
         player.openInventory(inv);
     }
@@ -196,7 +196,7 @@ public class BuilderGUIListener implements Listener {
             meta.setDisplayName(name);
             meta.setLore(List.of(loc != null ?
                     String.format("X: %.0f Y: %.0f Z: %.0f", loc.getX(), loc.getY(), loc.getZ()) :
-                    "Não definido"));
+                    "Not set"));
             item.setItemMeta(meta);
         }
         return item;
@@ -206,16 +206,16 @@ public class BuilderGUIListener implements Listener {
         ItemStack item = new ItemStack(Material.IRON_BARS);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Condições");
+            meta.setDisplayName(ChatColor.LIGHT_PURPLE + "Conditions");
             List<String> lore = new ArrayList<>();
             if (builder.getConditions().isEmpty()) {
-                lore.add(ChatColor.GRAY + "Nenhuma condição definida");
+                lore.add(ChatColor.GRAY + "No conditions set");
             } else {
                 builder.getConditions().forEach(cond ->
                         lore.add(ChatColor.GREEN + "- " + cond.getDisplayText()));
             }
             lore.add("");
-            lore.add(ChatColor.GRAY + "Clique para abrir GUI de condições");
+            lore.add(ChatColor.GRAY + "Click to open condition GUI");
             meta.setLore(lore);
             item.setItemMeta(meta);
         }
@@ -228,13 +228,13 @@ public class BuilderGUIListener implements Listener {
         builderManager.setWaitingForBlockClick(id, true);
         builderManager.setWaitingForPointA(id, isPointA);
         player.closeInventory();
-        player.sendMessage(ChatColor.YELLOW + "Clique em um bloco para definir " + (isPointA ? "Ponto A" : "Ponto B") + ".");
+        player.sendMessage(ChatColor.YELLOW + "Click on a block to set " + (isPointA ? "Point A" : "Point B") + ".");
     }
 
     private void promptTextInput(Player player) {
         builderManager.setWaitingForName(player.getUniqueId(), true);
         player.closeInventory();
-        player.sendMessage(ChatColor.AQUA + "Digite o " + "nome do portal" + " no chat:");
+        player.sendMessage(ChatColor.AQUA + "Type the portal name in chat:");
     }
 
     private void promptNumericInput(Player player, GateBuilderData builder, String type) {
@@ -244,23 +244,23 @@ public class BuilderGUIListener implements Listener {
         switch (type.toLowerCase()) {
             case "detection" -> {
                 builder.setAwaitingRadius(true);
-                player.sendMessage(ChatColor.AQUA + "Digite o detection radius do portal no chat:");
+                player.sendMessage(ChatColor.AQUA + "Type the portal detection radius in chat:");
             }
             case "cooldown" -> {
                 builder.setAwaitingCooldown(true);
-                player.sendMessage(ChatColor.AQUA + "Digite o cooldown do portal (em ticks) no chat:");
+                player.sendMessage(ChatColor.AQUA + "Type the portal cooldown (in ticks) in chat:");
             }
         }
     }
 
     private void finalizePortal(Player player, GateBuilderData builder) {
         if (!builder.isComplete()) {
-            player.sendMessage(ChatColor.RED + "O portal ainda não está completo!");
+            player.sendMessage(ChatColor.RED + "The portal is not complete yet!");
             return;
         }
         gateManager.addGateFromBuilder(builder);
         builderManager.stopBuilding(player.getUniqueId());
-        player.sendMessage(ChatColor.GREEN + "Portal '" + builder.getName() + "' criado com sucesso!");
+        player.sendMessage(ChatColor.GREEN + "Portal '" + builder.getName() + "' successfully created!");
         player.closeInventory();
     }
 
@@ -269,7 +269,7 @@ public class BuilderGUIListener implements Listener {
     }
 
     private void openTypeSelection(Player player) {
-        player.sendMessage(ChatColor.YELLOW + "Seleção de tipo ainda não implementada.");
+        player.sendMessage(ChatColor.YELLOW + "Type selection not implemented yet.");
     }
 
     public void openConditionsGUI(Player player, GateBuilderData builder) {

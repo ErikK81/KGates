@@ -28,7 +28,7 @@ public record ConditionGUI(GateBuilderData builderData, BuilderGUIListener build
         inv.setItem(12, makeConditionItem(SimpleGateCondition.ConditionType.TIME));
         inv.setItem(14, makeConditionItem(SimpleGateCondition.ConditionType.PERMISSION));
         inv.setItem(16, makeConditionItem(SimpleGateCondition.ConditionType.HEALTH));
-        inv.setItem(18, makeItem(ChatColor.AQUA + "Voltar"));
+        inv.setItem(18, makeItem(ChatColor.AQUA + "Back"));
 
         player.openInventory(inv);
         Bukkit.getPluginManager().registerEvents(this, getInstance());
@@ -59,14 +59,14 @@ public record ConditionGUI(GateBuilderData builderData, BuilderGUIListener build
         boolean hasCondition = false;
         for (SimpleGateCondition cond : builderData.getConditions()) {
             if (cond.getType() == type) {
-                lore.add(ChatColor.GREEN + "Ativa: " + cond.getDisplayText());
+                lore.add(ChatColor.GREEN + "Active: " + cond.getDisplayText());
                 hasCondition = true;
             }
         }
-        if (!hasCondition) lore.add(ChatColor.GRAY + "Nenhuma condição definida");
+        if (!hasCondition) lore.add(ChatColor.GRAY + "No condition defined");
 
         lore.add("");
-        lore.add(ChatColor.GRAY + "Clique esquerdo para editar, direito para remover");
+        lore.add(ChatColor.GRAY + "Left-click to edit, right-click to remove");
         return lore;
     }
 
@@ -79,7 +79,7 @@ public record ConditionGUI(GateBuilderData builderData, BuilderGUIListener build
         e.setCancelled(true);
         int slot = e.getRawSlot();
 
-        if (slot == 18) { // voltar
+        if (slot == 18) { // back
             player.closeInventory();
             HandlerList.unregisterAll(this);
             builderGUIListener.openBuilderGUI(player, builderData);
@@ -97,13 +97,13 @@ public record ConditionGUI(GateBuilderData builderData, BuilderGUIListener build
 
         if (e.isRightClick()) {
             builderData.removeCondition(type);
-            player.sendMessage(ChatColor.RED + "Condição " + type.name() + " removida!");
+            player.sendMessage(ChatColor.RED + "Condition " + type.name() + " removed!");
             player.closeInventory();
             Bukkit.getScheduler().runTask(getInstance(), () -> openMain(player));
             return;
         }
 
-        // Iniciar input pelo chat
+        // Start chat input
         player.closeInventory();
         builderData.startConditionInput(type, player);
         HandlerList.unregisterAll(this);
@@ -114,7 +114,7 @@ public record ConditionGUI(GateBuilderData builderData, BuilderGUIListener build
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(name);
-            meta.setLore(List.of(ChatColor.GRAY + "Clique para configurar"));
+            meta.setLore(List.of(ChatColor.GRAY + "Click to configure"));
             item.setItemMeta(meta);
         }
         return item;

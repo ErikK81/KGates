@@ -23,7 +23,7 @@ public record ConditionSelectionListener(GateBuilderManager builderManager, Gate
         if (e.getClickedInventory() == null) return;
 
         String title = e.getView().getTitle();
-        if (!"Selecionar Condição".equals(title) && !"Gate Conditions".equals(title)) return;
+        if (!"Select Condition".equals(title) && !"Gate Conditions".equals(title)) return;
 
         // somente top inventory
         if (e.getClickedInventory() != e.getView().getTopInventory()) return;

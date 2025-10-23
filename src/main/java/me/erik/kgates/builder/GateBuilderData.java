@@ -53,6 +53,7 @@ public class GateBuilderData {
     public List<SimpleGateCondition> getConditions() {
         return Collections.unmodifiableList(conditions);
     }
+
     public void addCondition(SimpleGateCondition condition) {
         if (condition == null) return;
         conditions.removeIf(c -> c.getType() == condition.getType());
@@ -69,10 +70,10 @@ public class GateBuilderData {
     public void startConditionInput(SimpleGateCondition.ConditionType type, Player player) {
         this.waitingConditionType = type;
         player.closeInventory();
-        player.sendMessage(ChatColor.AQUA + "Digite o valor para a condição "
+        player.sendMessage(ChatColor.AQUA + "Type the value for condition "
                 + ChatColor.YELLOW + type.name()
-                + ChatColor.AQUA + " no chat, ou digite "
-                + ChatColor.RED + "'cancelar'" + ChatColor.AQUA + " para abortar.");
+                + ChatColor.AQUA + " in chat, or type "
+                + ChatColor.RED + "'cancel'" + ChatColor.AQUA + " to abort.");
     }
 
     public boolean isComplete() {
