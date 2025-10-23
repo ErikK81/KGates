@@ -1,7 +1,10 @@
 package me.erik.kgates;
 
 import me.erik.kgates.builder.BuilderGUIListener;
+import me.erik.kgates.builder.GateBuilderData;
 import me.erik.kgates.builder.GateBuilderManager;
+import me.erik.kgates.conditions.ConditionChatListener;
+import me.erik.kgates.conditions.ConditionGUI;
 import me.erik.kgates.listeners.PortalListener;
 import me.erik.kgates.manager.GateManager;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -12,6 +15,7 @@ public final class KGates extends JavaPlugin {
 
     private GateManager gateManager;
     private GateBuilderManager builderManager;
+    private BuilderGUIListener builderGUI;
     private static KGates instance;
 
 
@@ -29,6 +33,7 @@ public final class KGates extends JavaPlugin {
 
         // Registrar listeners
         getServer().getPluginManager().registerEvents(new PortalListener(gateManager), this);
+        getServer().getPluginManager().registerEvents(new ConditionChatListener(builderManager,gateManager, builderGUI), this);
         getServer().getPluginManager().registerEvents(new BuilderGUIListener(builderManager, gateManager), this);
 
         getLogger().info("KGates carregado com sucesso!");

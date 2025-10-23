@@ -2,6 +2,7 @@ package me.erik.kgates.conditions;
 
 import org.bukkit.World;
 import org.bukkit.entity.Player;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -74,6 +75,21 @@ public class SimpleGateCondition {
         }
 
         return map;
+    }
+
+    public static SimpleGateCondition deserialize(Map<String, Object> map) {
+        String typeStr = (String) map.get("type");
+        if (typeStr == null) return null;
+        ConditionType type = ConditionType.valueOf(typeStr);
+
+        return switch (type) {
+            case PERMISSION, WEATHER -> new SimpleGateCondition(type, (String) map.get("value"));
+            case HEALTH -> new SimpleGateCondition(type, ((Number) map.get("value")).doubleValue());
+            case TIME -> new SimpleGateCondition(
+                    ((Number) map.get("start")).longValue(),
+                    ((Number) map.get("end")).longValue()
+            );
+        };
     }
 
     public String getDisplayText() {

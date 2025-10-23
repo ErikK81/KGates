@@ -1,8 +1,9 @@
 package me.erik.kgates.conditions;
 
+import me.erik.kgates.builder.BuilderGUIListener;
 import me.erik.kgates.builder.GateBuilderData;
-import me.erik.kgates.manager.GateManager;
 import me.erik.kgates.builder.GateBuilderManager;
+import me.erik.kgates.manager.GateManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -10,14 +11,18 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 
+import java.util.Arrays;
+
 import static me.erik.kgates.KGates.getInstance;
 
-public record ConditionChatListener(GateBuilderManager builderManager, GateManager gateManager) implements Listener {
+public record ConditionChatListener(GateBuilderManager builderManager, GateManager gateManager, BuilderGUIListener builderGUI) implements Listener {
 
     @EventHandler
     public void onChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
+
         GateBuilderData builder = builderManager.getBuilder(player.getUniqueId());
+
         if (builder == null) return;
 
         SimpleGateCondition.ConditionType waitingType = builder.getWaitingConditionType();
@@ -29,7 +34,7 @@ public record ConditionChatListener(GateBuilderManager builderManager, GateManag
         if ("cancelar".equalsIgnoreCase(msg)) {
             builder.setWaitingConditionType(null);
             player.sendMessage(ChatColor.RED + "Entrada de condição cancelada.");
-            Bukkit.getScheduler().runTask(getInstance(), () -> builder.openConditionGUI(player));
+            Bukkit.getScheduler().runTask(getInstance(), () -> new ConditionGUI(builder, builderGUI).openMain(player));
             return;
         }
 
@@ -39,8 +44,9 @@ public record ConditionChatListener(GateBuilderManager builderManager, GateManag
                 case HEALTH -> new SimpleGateCondition(waitingType, Double.parseDouble(msg));
                 case TIME -> {
                     String[] parts = msg.split("-");
-                    if (parts.length != 2) throw new IllegalArgumentException("Formato inválido! Use: inicio-fim (ex: 6000-18000)");
-                    yield new SimpleGateCondition(Long.parseLong(parts[0]), Long.parseLong(parts[1]));
+                    if (parts.length != 2)
+                        throw new IllegalArgumentException("Formato inválido! Use: inicio-fim (ex: 6000-18000)");
+                    yield new SimpleGateCondition(SimpleGateCondition.ConditionType.TIME, Arrays.toString(new long[]{Long.parseLong(parts[0]), Long.parseLong(parts[1])}));
                 }
             };
 
@@ -49,10 +55,12 @@ public record ConditionChatListener(GateBuilderManager builderManager, GateManag
             gateManager.addGateFromBuilder(builder);
 
             player.sendMessage(ChatColor.GREEN + "Condição adicionada: " + ChatColor.YELLOW + waitingType.name());
-            Bukkit.getScheduler().runTask(getInstance(), () -> builder.openConditionGUI(player));
+            Bukkit.getScheduler().runTask(getInstance(), () -> new ConditionGUI(builder, builderGUI).openMain(player));
 
         } catch (Exception ex) {
             player.sendMessage(ChatColor.RED + "Valor inválido para condição " + waitingType.name() + ".");
         }
     }
+
+
 }

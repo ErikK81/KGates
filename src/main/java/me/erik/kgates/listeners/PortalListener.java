@@ -1,6 +1,5 @@
 package me.erik.kgates.listeners;
 
-import me.erik.kgates.conditions.SimpleGateCondition;
 import me.erik.kgates.manager.GateData;
 import me.erik.kgates.manager.GateManager;
 import org.bukkit.Location;

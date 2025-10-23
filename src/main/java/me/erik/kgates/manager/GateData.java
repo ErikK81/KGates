@@ -50,11 +50,10 @@ public class GateData {
         map.put("detectionRadius", detectionRadius);
         map.put("cooldownTicks", cooldownTicks);
 
-        Map<String, Object> condMap = new HashMap<>();
-        for (int i = 0; i < conditions.size(); i++) {
-            condMap.put(String.valueOf(i), conditions.get(i).serialize());
-        }
-        map.put("conditions", condMap);
+        List<Map<String, Object>> condList = new ArrayList<>();
+        for (SimpleGateCondition cond : conditions) condList.add(cond.serialize());
+        map.put("conditions", condList);
+
         return map;
     }
 
@@ -77,9 +76,11 @@ public class GateData {
         gate.setDetectionRadius(section.getDouble("detectionRadius", 1.5));
         gate.setCooldownTicks(section.getLong("cooldownTicks", 20));
 
-        ConfigurationSection condSection = section.getConfigurationSection("conditions");
-        if (condSection != null) {
-            gate.getConditions().addAll(GateConditionLoader.loadConditions(condSection));
+        List<Map<String, Object>> condList = (List<Map<String, Object>>) section.getList("conditions");
+        if (condList != null) {
+            for (Map<String, Object> map : condList) {
+                gate.addCondition(SimpleGateCondition.deserialize(map));
+            }
         }
         return gate;
     }

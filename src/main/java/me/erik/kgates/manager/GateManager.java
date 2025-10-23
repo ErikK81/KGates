@@ -2,11 +2,12 @@ package me.erik.kgates.manager;
 
 import me.erik.kgates.KGates;
 import me.erik.kgates.builder.GateBuilderData;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.YamlConfiguration;
+import me.erik.kgates.conditions.SimpleGateCondition;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 
 public class GateManager {
 
@@ -25,6 +26,8 @@ public class GateManager {
         gate.setType(builder.getType());
         gate.setDetectionRadius(builder.getDetectionRadius());
         gate.setCooldownTicks(builder.getCooldownTicks());
+        for (SimpleGateCondition cond : builder.getConditions()) gate.addCondition(cond);
+
         gates.put(gate.getId().toLowerCase(), gate);
         saveAll();
     }

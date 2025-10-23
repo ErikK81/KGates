@@ -4,6 +4,7 @@ import me.erik.kgates.conditions.SimpleGateCondition;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class GateConditionLoader {
@@ -38,7 +39,7 @@ public class GateConditionLoader {
                 case TIME -> {
                     long start = condSection.getLong("start", 0);
                     long end = condSection.getLong("end", 0);
-                    conditions.add(new SimpleGateCondition(start, end));
+                    conditions.add(new SimpleGateCondition(SimpleGateCondition.ConditionType.TIME, Arrays.toString(new long[]{start, end})));
                 }
             }
         }

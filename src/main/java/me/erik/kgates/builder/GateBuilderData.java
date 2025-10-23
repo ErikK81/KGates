@@ -1,7 +1,6 @@
 package me.erik.kgates.builder;
 
 import me.erik.kgates.conditions.SimpleGateCondition;
-import me.erik.kgates.conditions.ConditionGUI;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -54,8 +53,15 @@ public class GateBuilderData {
     public List<SimpleGateCondition> getConditions() {
         return Collections.unmodifiableList(conditions);
     }
-    public void addCondition(SimpleGateCondition condition) { if (condition != null) conditions.add(condition); }
-    public void removeCondition(SimpleGateCondition.ConditionType type) { conditions.removeIf(c -> c.getType() == type); }
+    public void addCondition(SimpleGateCondition condition) {
+        if (condition == null) return;
+        conditions.removeIf(c -> c.getType() == condition.getType());
+        conditions.add(condition);
+    }
+
+    public void removeCondition(SimpleGateCondition.ConditionType type) {
+        conditions.removeIf(c -> c.getType() == type);
+    }
 
     public SimpleGateCondition.ConditionType getWaitingConditionType() { return waitingConditionType; }
     public void setWaitingConditionType(SimpleGateCondition.ConditionType waitingConditionType) { this.waitingConditionType = waitingConditionType; }
@@ -67,10 +73,6 @@ public class GateBuilderData {
                 + ChatColor.YELLOW + type.name()
                 + ChatColor.AQUA + " no chat, ou digite "
                 + ChatColor.RED + "'cancelar'" + ChatColor.AQUA + " para abortar.");
-    }
-
-    public void openConditionGUI(Player player) {
-        new ConditionGUI(this).open(player);
     }
 
     public boolean isComplete() {

@@ -1,69 +1,117 @@
 package me.erik.kgates.conditions;
 
 import me.erik.kgates.builder.GateBuilderData;
+import me.erik.kgates.builder.BuilderGUIListener;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.HandlerList;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public record ConditionGUI(GateBuilderData builderData) implements Listener {
+import static me.erik.kgates.KGates.getInstance;
 
-    private static final int ADD_BUTTON_SLOT = 26;
+public record ConditionGUI(GateBuilderData builderData, BuilderGUIListener builderGUIListener) implements Listener {
 
-    public void open(Player player) {
+    public void openMain(Player player) {
         Inventory inv = Bukkit.createInventory(null, 27, "Gate Conditions");
 
-        List<SimpleGateCondition> conditions = builderData.getConditions();
-        for (int i = 0; i < conditions.size(); i++) {
-            SimpleGateCondition cond = conditions.get(i);
-            ItemStack item = new ItemStack(Material.PAPER);
-            ItemMeta meta = item.getItemMeta();
-            if (meta != null) {
-                meta.setDisplayName("§e" + cond.getType().name());
-                meta.setLore(List.of("§7" + cond.getDisplayText(), "§cClique direito para remover"));
-                item.setItemMeta(meta);
-                inv.setItem(i, item);
-            }
-        }
-
-        ItemStack add = new ItemStack(Material.EMERALD_BLOCK);
-        ItemMeta meta = add.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName("§aAdicionar nova condição");
-            add.setItemMeta(meta);
-            inv.setItem(ADD_BUTTON_SLOT, add);
-        }
+        inv.setItem(10, makeConditionItem(SimpleGateCondition.ConditionType.WEATHER));
+        inv.setItem(12, makeConditionItem(SimpleGateCondition.ConditionType.TIME));
+        inv.setItem(14, makeConditionItem(SimpleGateCondition.ConditionType.PERMISSION));
+        inv.setItem(16, makeConditionItem(SimpleGateCondition.ConditionType.HEALTH));
+        inv.setItem(18, makeItem(Material.ARROW, ChatColor.AQUA + "Voltar"));
 
         player.openInventory(inv);
+        Bukkit.getPluginManager().registerEvents(this, getInstance());
+    }
+
+    private ItemStack makeConditionItem(SimpleGateCondition.ConditionType type) {
+        Material mat = switch (type) {
+            case WEATHER -> Material.FEATHER;
+            case TIME -> Material.CLOCK;
+            case PERMISSION -> Material.BARRIER;
+            case HEALTH -> Material.APPLE;
+        };
+
+        ItemStack item = new ItemStack(mat);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.AQUA + type.name());
+
+            List<String> lore = new ArrayList<>();
+            boolean hasCondition = false;
+            for (SimpleGateCondition cond : builderData.getConditions()) {
+                if (cond.getType() == type) {
+                    lore.add(ChatColor.GREEN + "Ativa: " + cond.getDisplayText());
+                    hasCondition = true;
+                }
+            }
+            if (!hasCondition) lore.add(ChatColor.GRAY + "Nenhuma condição definida");
+
+            lore.add("");
+            lore.add(ChatColor.GRAY + "Clique esquerdo para editar, direito para remover");
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+        }
+        return item;
     }
 
     @EventHandler
-    public void onClick(InventoryClickEvent e) {
-        String title = e.getView().getTitle();
-        Player player = (Player) e.getWhoClicked();
+    public void onInventoryClick(InventoryClickEvent e) {
+        if (!(e.getWhoClicked() instanceof Player player)) return;
+        if (e.getClickedInventory() == null) return;
+        if (!"Gate Conditions".equals(e.getView().getTitle())) return;
 
-        if ("Gate Conditions".equals(title)) {
-            e.setCancelled(true);
-            int slot = e.getRawSlot();
+        e.setCancelled(true);
+        int slot = e.getRawSlot();
 
-            if (slot == ADD_BUTTON_SLOT) {
-                new ConditionSelectorGUI(builderData).open(player);
-                return;
-            }
-
-            List<SimpleGateCondition> conditions = builderData.getConditions();
-            if (slot >= 0 && slot < conditions.size() && e.isRightClick()) {
-                SimpleGateCondition removed = conditions.remove(slot);
-                player.sendMessage("§cCondição §6" + removed.getType().name() + "§c removida!");
-                open(player);
-            }
+        if (slot == 18) { // voltar
+            player.closeInventory();
+            HandlerList.unregisterAll(this);
+            builderGUIListener.openBuilderGUI(player, builderData);
+            return;
         }
+
+        SimpleGateCondition.ConditionType type = switch (slot) {
+            case 10 -> SimpleGateCondition.ConditionType.WEATHER;
+            case 12 -> SimpleGateCondition.ConditionType.TIME;
+            case 14 -> SimpleGateCondition.ConditionType.PERMISSION;
+            case 16 -> SimpleGateCondition.ConditionType.HEALTH;
+            default -> null;
+        };
+        if (type == null) return;
+
+        if (e.isRightClick()) {
+            builderData.removeCondition(type);
+            player.sendMessage(ChatColor.RED + "Condição " + type.name() + " removida!");
+            player.closeInventory();
+            Bukkit.getScheduler().runTask(getInstance(), () -> openMain(player));
+            return;
+        }
+
+        // Iniciar input pelo chat
+        player.closeInventory();
+        builderData.startConditionInput(type, player);
+        HandlerList.unregisterAll(this);
+    }
+
+    private static ItemStack makeItem(Material mat, String name) {
+        ItemStack item = new ItemStack(mat);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(name);
+            meta.setLore(List.of(ChatColor.GRAY + "Clique para configurar"));
+            item.setItemMeta(meta);
+        }
+        return item;
     }
 }
