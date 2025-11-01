@@ -39,8 +39,11 @@ public final class KGates extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        gateManager.saveAll();
-        getLogger().info("KGates desligado com segurança.");
+        if (gateManager != null) {
+            gateManager.saveAll(); // só salva se existir
+        } else {
+            getLogger().warning("GateManager não estava inicializado, pulando salvamento.");
+        }
     }
     public static KGates getInstance() {
         return instance;

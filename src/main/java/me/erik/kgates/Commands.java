@@ -5,12 +5,16 @@ import me.erik.kgates.builder.GateBuilderData;
 import me.erik.kgates.builder.GateBuilderManager;
 import me.erik.kgates.manager.GateData;
 import me.erik.kgates.manager.GateManager;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -106,6 +110,10 @@ public class Commands implements CommandExecutor, TabCompleter {
             player.sendMessage(ChatColor.RED + "Usage: /kgate edit <id>");
             return;
         }
+        if (!builderManager.startEditing(args[1])) {
+            player.sendMessage(ChatColor.RED + "This portal is currently being edited by someone else.");
+            return;
+        }
 
         String id = args[1].toLowerCase();
         GateData gate = gateManager.getGate(id);
@@ -115,24 +123,28 @@ public class Commands implements CommandExecutor, TabCompleter {
             return;
         }
 
-        GateBuilderData builder = new GateBuilderData(player.getUniqueId(), id);
-        builder.setType(gate.getType());
-        builder.setLocA(gate.getLoc1());
-        builder.setLocB(gate.getLoc2());
-        builder.setCooldownTicks(gate.getCooldownTicks());
-        builder.setDetectionRadius(gate.getDetectionRadius());
-
-        builderManager.startBuilding(builder);
-
         player.sendMessage(ChatColor.AQUA + "Opening GUI to edit gate: " + ChatColor.YELLOW + id);
-        guiListener.openBuilderGUI(player, builder);
+        guiListener.openBuilderForEdit(player, gate);
     }
 
     // ---------------- BROWSE ----------------
 
     private void handleBrowse(Player player) {
-        player.sendMessage(ChatColor.GOLD + "Opening gate list...");
-        // TODO: open gate browsing GUI
+        List<GateData> gates = new ArrayList<>(gateManager.getAllGates());
+        if (gates.isEmpty()) {
+            player.sendMessage(ChatColor.RED + "No gates available.");
+            return;
+        }
+
+        int size = ((gates.size() - 1) / 9 + 1) * 9; // múltiplo de 9
+        Inventory inv = Bukkit.createInventory(null, size, "✦ Browse Portals");
+
+        for (int i = 0; i < gates.size(); i++) {
+            GateData gate = gates.get(i);
+            inv.setItem(i, BuilderGUIListener.item(Material.PAPER, ChatColor.AQUA + gate.getId()));
+        }
+
+        player.openInventory(inv);
     }
 
     // ---------------- TELEPORT ----------------
@@ -143,7 +155,7 @@ public class Commands implements CommandExecutor, TabCompleter {
             return;
         }
 
-        String name = args[1];
+        String name = args[1].toLowerCase();
         String pointStr = args[2];
 
         if (!pointStr.equals("1") && !pointStr.equals("2")) {
@@ -158,11 +170,19 @@ public class Commands implements CommandExecutor, TabCompleter {
         }
 
         int point = Integer.parseInt(pointStr);
-        player.sendMessage(ChatColor.GREEN + "Teleported to point " + ChatColor.YELLOW + point + ChatColor.GREEN +
-                " of gate " + ChatColor.YELLOW + name + ChatColor.GREEN + "!");
+        Location target = (point == 1) ? gate.getLoc1() : gate.getLoc2();
+
+        if (target == null) {
+            player.sendMessage(ChatColor.RED + "Point " + point + " is not set for this gate.");
+            return;
+        }
+
+        player.teleport(target);
+        player.sendMessage(ChatColor.GREEN + "Teleported to point " + ChatColor.YELLOW + point +
+                ChatColor.GREEN + " of gate " + ChatColor.YELLOW + name + ChatColor.GREEN + "!");
     }
 
-    // ---------------- USAGE ----------------
+        // ---------------- USAGE ----------------
 
     private void sendUsage(Player player) {
         player.sendMessage(ChatColor.GOLD + "KGates Commands:");

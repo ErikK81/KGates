@@ -1,9 +1,8 @@
 package me.erik.kgates.builder;
 
 import me.erik.kgates.conditions.SimpleGateCondition;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+
+import java.util.*;
 
 public class GateBuilderManager {
 
@@ -14,6 +13,7 @@ public class GateBuilderManager {
     private final Map<UUID, Boolean> waitingForDetectionRadius = new HashMap<>();
     private final Map<UUID, Boolean> waitingForCooldown = new HashMap<>();
     private final Map<UUID, SimpleGateCondition.ConditionType> waitingForCondition = new HashMap<>();
+    private final Set<String> gatesBeingEdited = new HashSet<>();
 
     public void startBuilding(GateBuilderData builder) {
         UUID id = builder.getPlayerId();
@@ -36,6 +36,14 @@ public class GateBuilderManager {
         waitingForCondition.remove(playerId);
     }
 
+    public boolean startEditing(String gateId) {
+        return gatesBeingEdited.add(gateId); // true se não estava sendo editado
+    }
+
+    public void stopEditing(String gateId) {
+        gatesBeingEdited.remove(gateId);
+    }
+
     public GateBuilderData getBuilder(UUID playerId) { return activeBuilders.get(playerId); }
     public boolean isBuilding(UUID playerId) { return activeBuilders.containsKey(playerId); }
 
@@ -48,8 +56,4 @@ public class GateBuilderManager {
     public void setWaitingForPointA(UUID playerId, boolean isPointA) { if (isBuilding(playerId)) waitingForPointA.put(playerId, isPointA); }
     public boolean isWaitingForPointA(UUID playerId) { return waitingForPointA.getOrDefault(playerId, true); }
 
-    // --- Condições ---
-    public void setWaitingForCondition(UUID playerId, SimpleGateCondition.ConditionType type) { if (isBuilding(playerId)) waitingForCondition.put(playerId, type); }
-    public SimpleGateCondition.ConditionType getWaitingCondition(UUID playerId) { return waitingForCondition.get(playerId); }
-    public void removeWaitingCondition(UUID playerId) { waitingForCondition.remove(playerId); }
 }

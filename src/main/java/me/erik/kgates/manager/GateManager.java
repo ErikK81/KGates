@@ -3,11 +3,12 @@ package me.erik.kgates.manager;
 import me.erik.kgates.KGates;
 import me.erik.kgates.builder.GateBuilderData;
 import me.erik.kgates.conditions.SimpleGateCondition;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.YamlConfiguration;
 
 public class GateManager {
 
@@ -17,22 +18,46 @@ public class GateManager {
 
     public GateManager(KGates plugin) {
         this.file = new File(plugin.getDataFolder(), "gates.yml");
+        if (!file.exists()) {
+            try {
+                file.getParentFile().mkdirs();
+                file.createNewFile();
+            } catch (IOException e) {
+                plugin.getLogger().severe("Erro ao criar gates.yml");
+                e.printStackTrace();
+            }
+        }
         this.config = YamlConfiguration.loadConfiguration(file);
         loadAll();
     }
 
+
     public void addGateFromBuilder(GateBuilderData builder) {
         GateData gate = new GateData(builder.getId(), builder.getLocA(), builder.getLocB());
-        gate.setType(builder.getType());
+
+        // Define o tipo do portal usando a enum
+        gate.setType(GateData.PortalType.valueOf(builder.getType()));
+
         gate.setDetectionRadius(builder.getDetectionRadius());
         gate.setCooldownTicks(builder.getCooldownTicks());
-        for (SimpleGateCondition cond : builder.getConditions()) gate.addCondition(cond);
+
+        // Adiciona condições
+        for (SimpleGateCondition cond : builder.getConditions()) {
+            gate.addCondition(cond);
+        }
+
+        // Adiciona comandos
+        if (builder.getCommands() != null && !builder.getCommands().isEmpty()) {
+            gate.setCommands(builder.getCommands());
+        }
 
         gates.put(gate.getId().toLowerCase(), gate);
         saveAll();
     }
 
-    public GateData getGate(String id) { return gates.get(id.toLowerCase()); }
+    public GateData getGate(String id) {
+        return gates.get(id.toLowerCase());
+    }
 
     public void removeGate(String id) {
         gates.remove(id.toLowerCase());
@@ -40,7 +65,9 @@ public class GateManager {
         saveFile();
     }
 
-    public Collection<GateData> getAllGates() { return gates.values(); }
+    public Collection<GateData> getAllGates() {
+        return gates.values();
+    }
 
     public void saveAll() {
         for (GateData gate : gates.values()) {
@@ -50,18 +77,33 @@ public class GateManager {
     }
 
     private void saveFile() {
-        try { config.save(file); }
-        catch (IOException e) { e.printStackTrace(); }
+        try {
+            config.save(file);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void loadAll() {
         ConfigurationSection portalsSection = config.getConfigurationSection("portals");
         if (portalsSection == null) return;
+
         for (String key : portalsSection.getKeys(false)) {
             ConfigurationSection gateSection = portalsSection.getConfigurationSection(key);
             if (gateSection != null) {
                 gates.put(key.toLowerCase(), GateData.deserialize(gateSection));
             }
+        }
+    }
+
+    /**
+     * Método para linkar dois portais (útil se quiser criar ida/volta)
+     */
+    public void linkGates(GateData from, GateData to, GateData.PortalType type) {
+        from.setType(type);
+
+        if (type == GateData.PortalType.TWO_WAY) {
+            to.setType(type);
         }
     }
 }
