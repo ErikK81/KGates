@@ -1,122 +1,130 @@
 package me.erik.kgates.conditions;
 
-import me.erik.kgates.builder.GateBuilderData;
+import me.erik.kgates.KGates;
 import me.erik.kgates.builder.BuilderGUIListener;
+import me.erik.kgates.builder.GateBuilderData;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Listener;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.HandlerList;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import static me.erik.kgates.KGates.getInstance;
+/**
+ * GUI simplificada para configurar uma condição PlaceholderAPI.
+ */
+public class ConditionGUI implements Listener {
 
-public record ConditionGUI(GateBuilderData builderData, BuilderGUIListener builderGUIListener) implements Listener {
+    private final GateBuilderData builderData;
+    private final BuilderGUIListener builderGUIListener;
 
-    public void openMain(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 27, "Gate Conditions");
-
-        inv.setItem(10, makeConditionItem(SimpleGateCondition.ConditionType.WEATHER));
-        inv.setItem(12, makeConditionItem(SimpleGateCondition.ConditionType.TIME));
-        inv.setItem(14, makeConditionItem(SimpleGateCondition.ConditionType.PERMISSION));
-        inv.setItem(16, makeConditionItem(SimpleGateCondition.ConditionType.HEALTH));
-        inv.setItem(18, makeItem(ChatColor.AQUA + "Back"));
-
-        player.openInventory(inv);
-        Bukkit.getPluginManager().registerEvents(this, getInstance());
+    public ConditionGUI(GateBuilderData builderData, BuilderGUIListener builderGUIListener) {
+        this.builderData = builderData;
+        this.builderGUIListener = builderGUIListener;
     }
 
-    private ItemStack makeConditionItem(SimpleGateCondition.ConditionType type) {
-        Material mat = switch (type) {
-            case WEATHER -> Material.FEATHER;
-            case TIME -> Material.CLOCK;
-            case PERMISSION -> Material.BARRIER;
-            case HEALTH -> Material.APPLE;
-        };
+    public void openMain(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, ChatColor.DARK_AQUA + "Gate Conditions");
 
-        ItemStack item = new ItemStack(mat);
+        inv.setItem(13, makeConditionItem());
+        inv.setItem(18, makeBackItem());
+
+        player.openInventory(inv);
+        Bukkit.getPluginManager().registerEvents(this, KGates.getInstance());
+    }
+
+    private ItemStack makeConditionItem() {
+        ItemStack item = new ItemStack(Material.REPEATER);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(ChatColor.AQUA + type.name());
+            meta.setDisplayName(ChatColor.AQUA + "Placeholder Condition");
 
-            List<String> lore = getStrings(type);
-            meta.setLore(lore);
+            List<SimpleGateCondition> conditions = builderData.getConditions();
+            if (conditions != null && !conditions.isEmpty()) {
+                String formatted = ChatColor.WHITE + conditions.stream()
+                        .map(SimpleGateCondition::getExpression)
+                        .reduce((a, b) -> a + ChatColor.GRAY + ", " + ChatColor.WHITE + b)
+                        .orElse("");
+                meta.setLore(List.of(
+                        ChatColor.GREEN + "Active:",
+                        formatted,
+                        "",
+                        ChatColor.GRAY + "Left-click to edit",
+                        ChatColor.GRAY + "Right-click to remove"
+                ));
+            } else {
+                meta.setLore(List.of(
+                        ChatColor.GRAY + "No condition defined",
+                        "",
+                        ChatColor.GRAY + "Left-click to add new condition"
+                ));
+            }
             item.setItemMeta(meta);
         }
         return item;
     }
 
-    private List<String> getStrings(SimpleGateCondition.ConditionType type) {
-        List<String> lore = new ArrayList<>();
-        boolean hasCondition = false;
-        for (SimpleGateCondition cond : builderData.getConditions()) {
-            if (cond.getType() == type) {
-                lore.add(ChatColor.GREEN + "Active: " + cond.getDisplayText());
-                hasCondition = true;
-            }
+    private static ItemStack makeBackItem() {
+        ItemStack item = new ItemStack(Material.ARROW);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.AQUA + "Back");
+            meta.setLore(List.of(ChatColor.GRAY + "Return to Builder"));
+            item.setItemMeta(meta);
         }
-        if (!hasCondition) lore.add(ChatColor.GRAY + "No condition defined");
-
-        lore.add("");
-        lore.add(ChatColor.GRAY + "Left-click to edit, right-click to remove");
-        return lore;
+        return item;
     }
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent e) {
         if (!(e.getWhoClicked() instanceof Player player)) return;
         if (e.getClickedInventory() == null) return;
-        if (!"Gate Conditions".equals(e.getView().getTitle())) return;
+        if (!ChatColor.stripColor(e.getView().getTitle()).equalsIgnoreCase("Gate Conditions")) return;
 
         e.setCancelled(true);
         int slot = e.getRawSlot();
 
-        if (slot == 18) { // back
-            player.closeInventory();
+        if (slot == 18) { // back button
             HandlerList.unregisterAll(this);
+            player.closeInventory();
             builderGUIListener.openBuilderGUI(player, builderData);
             return;
         }
 
-        SimpleGateCondition.ConditionType type = switch (slot) {
-            case 10 -> SimpleGateCondition.ConditionType.WEATHER;
-            case 12 -> SimpleGateCondition.ConditionType.TIME;
-            case 14 -> SimpleGateCondition.ConditionType.PERMISSION;
-            case 16 -> SimpleGateCondition.ConditionType.HEALTH;
-            default -> null;
-        };
-        if (type == null) return;
+        if (slot != 13) return; // only central item is the condition
 
         if (e.isRightClick()) {
-            builderData.removeCondition(type);
-            player.sendMessage(ChatColor.RED + "Condition " + type.name() + " removed!");
-            player.closeInventory();
-            Bukkit.getScheduler().runTask(getInstance(), () -> openMain(player));
+            builderData.clearConditions();
+            player.sendMessage(ChatColor.RED + "All conditions removed!");
+            Bukkit.getScheduler().runTask(KGates.getInstance(), () -> {
+                player.closeInventory();
+                openMain(player);
+            });
             return;
         }
 
-        // Start chat input
-        player.closeInventory();
-        builderData.startConditionInput(type, player);
+        // Left-click: start chat input
         HandlerList.unregisterAll(this);
+        player.closeInventory();
+
+        Bukkit.getScheduler().runTaskLater(KGates.getInstance(), () -> startConditionInput(player), 1L);
     }
 
-    private static ItemStack makeItem(String name) {
-        ItemStack item = new ItemStack(Material.ARROW);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(name);
-            meta.setLore(List.of(ChatColor.GRAY + "Click to configure"));
-            item.setItemMeta(meta);
-        }
-        return item;
+    private void startConditionInput(Player player) {
+        player.sendMessage(ChatColor.YELLOW + "Type your condition using placeholders (e.g. %player_health% >= 10)");
+        player.sendMessage(ChatColor.GRAY + "Example: %server_online% < 50 or %player_has_permission_vip% == true");
+        player.sendMessage(ChatColor.DARK_GRAY + "(Type 'cancel' to abort)");
+
+        builderData.setAwaitingConditionInput(true); // garante modo input ativo
+        builderData.startConditionInput(player);
+
+        Bukkit.getLogger().info("[DEBUG] " + player.getName() + " agora está no modo de input de condição.");
     }
 }

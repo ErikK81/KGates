@@ -11,56 +11,54 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 
-import java.util.Arrays;
-
 import static me.erik.kgates.KGates.getInstance;
 
-public record ConditionChatListener(GateBuilderManager builderManager, GateManager gateManager, BuilderGUIListener builderGUI) implements Listener {
+public record ConditionChatListener(GateBuilderManager builderManager,
+                                    GateManager gateManager,
+                                    BuilderGUIListener builderGUI) implements Listener {
 
     @EventHandler
     public void onChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
+        String msg = event.getMessage().trim();
 
         GateBuilderData builder = builderManager.getBuilder(player.getUniqueId());
         if (builder == null) return;
 
-        SimpleGateCondition.ConditionType waitingType = builder.getWaitingConditionType();
-        if (waitingType == null) return;
+        // Garante que o jogador está no modo de input
+        if (builder.isAwaitingConditionInput() && !builderManager.isWaitingForConditionInput(player.getUniqueId())) {
+            builderManager.setWaitingForConditionInput(player.getUniqueId(), true);
+        }
 
+        if (!builderManager.isWaitingForConditionInput(player.getUniqueId())) return;
+
+        // Cancela o chat padrão e processa o input
         event.setCancelled(true);
-        String msg = event.getMessage().trim();
+        builderManager.setWaitingForConditionInput(player.getUniqueId(), false);
+        builder.setAwaitingConditionInput(false);
 
-        if ("cancel".equalsIgnoreCase(msg)) {
-            builder.setWaitingConditionType(null);
-            player.sendMessage(ChatColor.RED + "Condition input canceled.");
-            Bukkit.getScheduler().runTask(getInstance(), () -> new ConditionGUI(builder, builderGUI).openMain(player));
-            return;
-        }
-
-        try {
-            SimpleGateCondition condition = switch (waitingType) {
-                case PERMISSION, WEATHER -> new SimpleGateCondition(waitingType, msg);
-                case HEALTH -> new SimpleGateCondition(waitingType, Double.parseDouble(msg));
-                case TIME -> {
-                    String[] parts = msg.split("-");
-                    if (parts.length != 2)
-                        throw new IllegalArgumentException("Invalid format! Use: start-end (e.g., 6000-18000)");
-                    yield new SimpleGateCondition(
-                            SimpleGateCondition.ConditionType.TIME,
-                            Arrays.toString(new long[]{Long.parseLong(parts[0]), Long.parseLong(parts[1])})
-                    );
+        Bukkit.getScheduler().runTask(getInstance(), () -> {
+            try {
+                if (msg.equalsIgnoreCase("cancel")) {
+                    player.sendMessage(ChatColor.RED + "Condição cancelada.");
+                    new ConditionGUI(builder, builderGUI).openMain(player);
+                    return;
                 }
-            };
 
-            builder.addCondition(condition);
-            builder.setWaitingConditionType(null);
-            gateManager.addGateFromBuilder(builder);
+                SimpleGateCondition condition = new SimpleGateCondition(msg);
+                builder.addCondition(condition);
+                gateManager.addGateFromBuilder(builder);
 
-            player.sendMessage(ChatColor.GREEN + "Condition added: " + ChatColor.YELLOW + waitingType.name());
-            Bukkit.getScheduler().runTask(getInstance(), () -> new ConditionGUI(builder, builderGUI).openMain(player));
+                player.sendMessage(ChatColor.GREEN + "Condição salva: " + ChatColor.WHITE + msg);
 
-        } catch (Exception ex) {
-            player.sendMessage(ChatColor.RED + "Invalid value for condition " + waitingType.name() + ".");
-        }
+                ConditionGUI gui = new ConditionGUI(builder, builderGUI);
+                Bukkit.getPluginManager().registerEvents(gui, getInstance());
+                gui.openMain(player);
+
+            } catch (Exception ex) {
+                player.sendMessage(ChatColor.RED + "Formato inválido! Exemplo: %player_health% >= 10");
+                ex.printStackTrace();
+            }
+        });
     }
 }

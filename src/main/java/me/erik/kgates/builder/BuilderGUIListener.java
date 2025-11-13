@@ -17,16 +17,18 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.*;
-import java.util.Objects;
-import java.util.UUID;
 
 import static me.erik.kgates.KGates.getInstance;
 
+/**
+ * GUI principal do construtor de portais.
+ * Atualizado para usar o novo sistema de condições PlaceholderAPI.
+ */
 public record BuilderGUIListener(GateBuilderManager builderManager, GateManager gateManager) implements Listener {
 
     private static final int FINALIZE_SLOT = 26;
 
-    // -------------------- OPEN BUILDER FOR EDIT --------------------
+    // -------------------- ABRIR EDIÇÃO --------------------
     public void openBuilderForEdit(Player player, GateData gate) {
         GateBuilderData builder = new GateBuilderData(player.getUniqueId(), gate.getId());
         builder.setType(String.valueOf(gate.getType()));
@@ -38,7 +40,6 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
         builder.getCommands().addAll(gate.getCommands());
         builder.getConditions().addAll(gate.getConditions());
 
-        // Partículas e sons como enums
         builder.setAmbientParticle(gate.getAmbientParticle());
         builder.setActivationParticle(gate.getActivationParticle());
         builder.setAmbientSound(gate.getAmbientSound());
@@ -48,14 +49,13 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
         openBuilderGUI(player, builder);
     }
 
-    // -------------------- INVENTORY CLICK --------------------
+    // -------------------- CLIQUES NO INVENTÁRIO --------------------
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
         String title = event.getView().getTitle();
         if (event.getClickedInventory() == null) return;
 
-        event.setCancelled(true);
         ItemStack clicked = event.getCurrentItem();
         if (clicked == null || !clicked.hasItemMeta()) return;
 
@@ -63,7 +63,7 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
             handleBrowseClick(player, clicked);
         } else if (title.equalsIgnoreCase("✦ Select Portal Type")) {
             handleTypeClick(player, event.getSlot());
-        } else if (title.startsWith("⚡ Commands:")) {
+        } else if (title.equalsIgnoreCase("⚡ Commands: " + player.getName())) {
             handleCommandGUIClick(player, event.getRawSlot());
         } else if (title.startsWith("✧ Portal: ")) {
             GateBuilderData builder = builderManager.getBuilder(player.getUniqueId());
@@ -108,15 +108,48 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
             case 20 -> openConditionsGUI(player, builder);
             case 22 -> promptTextInput(player);
             case 24 -> promptNumericInput(player, builder, "cooldown");
-            case 28 -> promptParticleSelection(player, builder, true);  // ambiente
-            case 29 -> promptParticleSelection(player, builder, false); // ativação
-            case 30 -> promptSoundSelection(player, builder, true);     // ambiente
-            case 31 -> promptSoundSelection(player, builder, false);    // ativação
+            case 28 -> promptParticleSelection(player, builder, true);
+            case 29 -> promptParticleSelection(player, builder, false);
+            case 30 -> promptSoundSelection(player, builder, true);
+            case 31 -> promptSoundSelection(player, builder, false);
             case FINALIZE_SLOT -> finalizePortal(player, builder);
         }
     }
 
-    // -------------------- BLOCK CLICK --------------------
+    private void handleCommandGUIClick(Player player, int slot) {
+        GateBuilderData builder = builderManager.getBuilder(player.getUniqueId());
+        if (builder == null) return;
+
+        switch (slot) {
+            case 11 -> { // Adicionar comando
+                builder.setAwaitingCommandInput(true);
+                player.closeInventory();
+                player.sendMessage(ChatColor.AQUA + "Type the command to add in chat (without /), or 'cancel' to abort:");
+            }
+            case 13 -> { // Remover comando
+                builder.setAwaitingCommandRemoval(true);
+                player.closeInventory();
+                player.sendMessage(ChatColor.AQUA + "Type the command number to remove, or 'cancel' to abort:");
+            }
+            case 15 -> { // Listar comandos
+                player.closeInventory();
+                if (builder.getCommands().isEmpty()) {
+                    player.sendMessage(ChatColor.GRAY + "No commands defined yet.");
+                } else {
+                    player.sendMessage(ChatColor.GOLD + "=== Commands for " + builder.getName() + " ===");
+                    for (int i = 0; i < builder.getCommands().size(); i++) {
+                        player.sendMessage(ChatColor.YELLOW + "" + (i + 1) + ". /" + builder.getCommands().get(i));
+                    }
+                }
+                reopenGUI(player, builder);
+            }
+            case 26 -> { // Voltar
+                openBuilderGUI(player, builder);
+            }
+        }
+    }
+
+    // -------------------- CLIQUE NO BLOCO --------------------
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
@@ -142,53 +175,24 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
         reopenGUI(player, builder);
     }
 
-    // -------------------- CHAT INPUT --------------------
+    // -------------------- ENTRADA DE CHAT --------------------
     @EventHandler
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         GateBuilderData builder = builderManager.getBuilder(player.getUniqueId());
         if (builder == null) return;
 
+        // Só trata inputs numéricos, nome, partículas, sons e comandos aqui.
         event.setCancelled(true);
         String msg = event.getMessage().trim();
 
-        if (handleConditionInput(player, builder, msg)) return;
-        handleGeneralInput(player, builder, msg);
-
-        if (builder.isAwaitingCommandInput()) handleCommandAdd(player, builder, msg);
-        else if (builder.isAwaitingCommandRemoval()) handleCommandRemove(player, builder, msg);
-    }
-
-    private boolean handleConditionInput(Player player, GateBuilderData builder, String msg) {
-        var waiting = builder.getWaitingConditionType();
-        if (waiting == null) return false;
-
-        if (msg.equalsIgnoreCase("cancel")) {
-            builder.setWaitingConditionType(null);
-            player.sendMessage(ChatColor.RED + "Condition input canceled.");
-            reopenGUI(player, builder);
-            return true;
+        if (builder.isAwaitingCommandInput()) {
+            handleCommandAdd(player, builder, msg);
+        } else if (builder.isAwaitingCommandRemoval()) {
+            handleCommandRemove(player, builder, msg);
+        } else {
+            handleGeneralInput(player, builder, msg);
         }
-
-        try {
-            SimpleGateCondition condition = switch (waiting) {
-                case PERMISSION, WEATHER -> new SimpleGateCondition(waiting, msg);
-                case HEALTH -> new SimpleGateCondition(waiting, Double.parseDouble(msg));
-                case TIME -> {
-                    String[] parts = msg.split("-");
-                    if (parts.length != 2) throw new IllegalArgumentException();
-                    yield new SimpleGateCondition(Long.parseLong(parts[0]), Long.parseLong(parts[1]));
-                }
-            };
-            builder.addCondition(condition);
-            player.sendMessage(ChatColor.GREEN + "Condition " + waiting.name() + " added!");
-        } catch (Exception e) {
-            player.sendMessage(ChatColor.RED + "Invalid value. Use the correct format.");
-        }
-
-        builder.setWaitingConditionType(null);
-        reopenGUI(player, builder);
-        return true;
     }
 
     private void handleCommandAdd(Player player, GateBuilderData builder, String msg) {
@@ -225,32 +229,7 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
         reopenGUI(player, builder);
     }
 
-    private void handleCommandGUIClick(Player player, int slot) {
-        GateBuilderData builder = builderManager.getBuilder(player.getUniqueId());
-        if (builder == null) return;
-
-        switch (slot) {
-            case 11 -> {
-                player.closeInventory();
-                player.sendMessage(ChatColor.AQUA + "Type the command to add (without /). Type 'cancel' to abort.");
-                builder.setAwaitingCommandInput(true);
-            }
-            case 13 -> {
-                player.closeInventory();
-                player.sendMessage(ChatColor.AQUA + "Type the command number to remove. Type 'cancel' to abort.");
-                builder.setAwaitingCommandRemoval(true);
-            }
-            case 15 -> {
-                player.sendMessage(ChatColor.GOLD + "Commands for this portal:");
-                List<String> cmds = builder.getCommands();
-                if (cmds.isEmpty()) player.sendMessage(ChatColor.GRAY + "No commands added.");
-                else cmds.forEach(player::sendMessage);
-            }
-            case 26 -> reopenGUI(player, builder);
-        }
-    }
-
-    // -------------------- GENERAL CHAT INPUT --------------------
+    // -------------------- ENTRADA GERAL --------------------
     private void handleGeneralInput(Player player, GateBuilderData builder, String msg) {
         UUID id = player.getUniqueId();
         if (!builderManager.isWaitingForName(id)) return;
@@ -288,7 +267,7 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
         reopenGUI(player, builder);
     }
 
-    // -------------------- GUI --------------------
+    // -------------------- GUI ABERTAS --------------------
     public void openBuilderGUI(Player player, GateBuilderData builder) {
         Inventory inv = Bukkit.createInventory(null, 36, "✧ Portal: " + builder.getId());
 
@@ -301,14 +280,12 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
         inv.setItem(22, item(Material.NAME_TAG, ChatColor.AQUA + "Name: " + ChatColor.YELLOW + builder.getName()));
         inv.setItem(24, item(Material.CLOCK, ChatColor.AQUA + "Cooldown: " + ChatColor.YELLOW + builder.getCooldownTicks() + " ticks"));
 
-        // Particle & Sound
         inv.setItem(28, item(Material.BLAZE_POWDER, ChatColor.AQUA + "Ambient Particle: " + ChatColor.YELLOW + (builder.getAmbientParticle() != null ? builder.getAmbientParticle().name() : "NONE")));
         inv.setItem(29, item(Material.FIRE_CHARGE, ChatColor.AQUA + "Activation Particle: " + ChatColor.YELLOW + (builder.getActivationParticle() != null ? builder.getActivationParticle().name() : "NONE")));
         inv.setItem(30, item(Material.NOTE_BLOCK, ChatColor.AQUA + "Ambient Sound: " + ChatColor.YELLOW + (builder.getAmbientSound() != null ? builder.getAmbientSound() : "NONE")));
         inv.setItem(31, item(Material.GOLD_BLOCK, ChatColor.AQUA + "Activation Sound: " + ChatColor.YELLOW + (builder.getActivationSound() != null ? builder.getActivationSound() : "NONE")));
 
         inv.setItem(FINALIZE_SLOT, item(Material.EMERALD_BLOCK, ChatColor.GREEN + "Finalize Portal"));
-
         player.openInventory(inv);
     }
 
@@ -394,7 +371,7 @@ public record BuilderGUIListener(GateBuilderManager builderManager, GateManager 
         player.openInventory(inv);
     }
 
-    // -------------------- ITEM HELPERS --------------------
+    // -------------------- ITENS --------------------
     public static ItemStack item(Material mat, String name) {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();

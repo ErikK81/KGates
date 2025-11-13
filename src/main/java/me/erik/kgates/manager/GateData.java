@@ -95,8 +95,9 @@ public class GateData {
 
     // -------------------- Conditions --------------------
     public boolean canActivate(org.bukkit.entity.Player player) {
+        if (conditions.isEmpty()) return true;
         for (SimpleGateCondition condition : conditions) {
-            if (!condition.canActivate(player)) return false;
+            if (!condition.evaluate(player)) return false;
         }
         return true;
     }
@@ -120,7 +121,7 @@ public class GateData {
         map.put("ambientParticle", ambientParticle.name());
         map.put("ambientParticleCount", ambientParticleCount);
         map.put("ambientParticleSpeed", ambientParticleSpeed);
-        map.put("ambientSound", ambientSound);
+        map.put("ambientSound", ambientSound != null ? ambientSound.name() : null);
         map.put("ambientSoundVolume", ambientSoundVolume);
         map.put("ambientSoundPitch", ambientSoundPitch);
 
@@ -128,7 +129,7 @@ public class GateData {
         map.put("activationParticle", activationParticle.name());
         map.put("activationParticleCount", activationParticleCount);
         map.put("activationParticleSpeed", activationParticleSpeed);
-        map.put("activationSound", activationSound);
+        map.put("activationSound", activationSound != null ? activationSound.name() : null);
         map.put("activationSoundVolume", activationSoundVolume);
         map.put("activationSoundPitch", activationSoundPitch);
 
@@ -166,18 +167,36 @@ public class GateData {
         gate.setCommands(section.getStringList("commands"));
 
         // ambient
-        try { gate.setAmbientParticle(Particle.valueOf(section.getString("ambientParticle", "FLAME"))); } catch (Exception ignored) {}
+        try {
+            gate.setAmbientParticle(Particle.valueOf(section.getString("ambientParticle", "FLAME")));
+        } catch (Exception ignored) {}
         gate.setAmbientParticleCount(section.getInt("ambientParticleCount", 10));
         gate.setAmbientParticleSpeed(section.getDouble("ambientParticleSpeed", 0.5));
-        try { gate.setAmbientSound(Sound.valueOf(section.getString("ambientSound", "ENTITY_ENDERMAN_TELEPORT"))); } catch (Exception ignored) {}
+
+        String ambientSoundName = section.getString("ambientSound");
+        if (ambientSoundName != null && !ambientSoundName.isEmpty()) {
+            try {
+                gate.setAmbientSound(Sound.valueOf(ambientSoundName));
+            } catch (IllegalArgumentException ignored) {}
+        }
+
         gate.setAmbientSoundVolume((float) section.getDouble("ambientSoundVolume", 1.0));
         gate.setAmbientSoundPitch((float) section.getDouble("ambientSoundPitch", 1.0));
 
         // activation
-        try { gate.setActivationParticle(Particle.valueOf(section.getString("activationParticle", "FLAME"))); } catch (Exception ignored) {}
+        try {
+            gate.setActivationParticle(Particle.valueOf(section.getString("activationParticle", "FLAME")));
+        } catch (Exception ignored) {}
         gate.setActivationParticleCount(section.getInt("activationParticleCount", 10));
         gate.setActivationParticleSpeed(section.getDouble("activationParticleSpeed", 0.5));
-        try { gate.setActivationSound(Sound.valueOf(section.getString("activationSound", "ENTITY_ENDERMAN_TELEPORT"))); } catch (Exception ignored) {}
+
+        String activationSoundName = section.getString("activationSound");
+        if (activationSoundName != null && !activationSoundName.isEmpty()) {
+            try {
+                gate.setActivationSound(Sound.valueOf(activationSoundName));
+            } catch (IllegalArgumentException ignored) {}
+        }
+
         gate.setActivationSoundVolume((float) section.getDouble("activationSoundVolume", 1.0));
         gate.setActivationSoundPitch((float) section.getDouble("activationSoundPitch", 1.0));
 

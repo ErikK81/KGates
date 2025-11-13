@@ -12,9 +12,10 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.HandlerList;
 
 /**
- * @param parent para poder reabrir GUI do builder
+ * Listener para seleção e edição de condições baseadas em PlaceholderAPI.
  */
-public record ConditionSelectionListener(GateBuilderManager builderManager, GateBuilderData builder,
+public record ConditionSelectionListener(GateBuilderManager builderManager,
+                                         GateBuilderData builder,
                                          BuilderGUIListener parent) implements Listener {
 
     @EventHandler
@@ -23,55 +24,48 @@ public record ConditionSelectionListener(GateBuilderManager builderManager, Gate
         if (e.getClickedInventory() == null) return;
 
         String title = e.getView().getTitle();
-        if (!"Select Condition".equals(title) && !"Gate Conditions".equals(title)) return;
+        if (!"Gate Conditions".equals(title)) return;
 
-        // somente top inventory
+        // Apenas o inventário superior (GUI principal)
         if (e.getClickedInventory() != e.getView().getTopInventory()) return;
 
         e.setCancelled(true);
         int slot = e.getRawSlot();
 
-        SimpleGateCondition.ConditionType type = switch (slot) {
-            case 10 -> SimpleGateCondition.ConditionType.PERMISSION;
-            case 12 -> SimpleGateCondition.ConditionType.WEATHER;
-            case 14 -> SimpleGateCondition.ConditionType.TIME;
-            case 16 -> SimpleGateCondition.ConditionType.HEALTH;
-            default -> null;
-        };
-
-        // botão voltar (se existir)
-        if (type == null) {
-            if ("Gate Conditions".equals(title) && slot == 18) {
-                player.closeInventory();
-                // reabre GUI principal do builder no main thread
-                Bukkit.getScheduler().runTask(KGates.getInstance(), () -> parent.openBuilderGUI(player, builder));
-                cleanup();
-            }
+        // Botão voltar
+        if (slot == 18) {
+            player.closeInventory();
+            Bukkit.getScheduler().runTask(KGates.getInstance(), () -> parent.openBuilderGUI(player, builder));
+            cleanup();
             return;
         }
 
-        // clique direito = remover condição
+        // Clique direito = remover condição
         if (e.isRightClick()) {
-            builder.removeCondition(type);
-            // reabre GUI de condições (ConditionGUI) — essa GUI deve estar registrada separadamente
+            builder.addCondition(null);
             ConditionGUI gui = new ConditionGUI(builder, parent);
-            // re-abrir a GUI de condições (registrando temporariamente a GUI listener original)
             Bukkit.getPluginManager().registerEvents(gui, KGates.getInstance());
             gui.openMain(player);
-            // manter este listener ativo — não limpa ainda
             return;
         }
 
-        // clique esquerdo: iniciar entrada via chat
-        player.closeInventory();
-        // aqui chamamos método do builder para iniciar o input de condição (presuma que existe)
-        builder.startConditionInput(type, player);
-        // este listener temporário não é mais necessário
-        cleanup();
+        // Clique esquerdo = adicionar/editar condição via chat
+        if (e.isLeftClick()) {
+            player.closeInventory();
+            startPlaceholderInput(player);
+            cleanup();
+        }
+    }
+
+    private void startPlaceholderInput(Player player) {
+        player.sendMessage("§eDigite no chat a condição (use placeholders, ex: %player_health% >= 10)");
+        player.sendMessage("§7Exemplo: %server_online% < 50 ou %player_has_permission_vip% == true");
+
+        // O GateBuilderData deve possuir método para lidar com input via chat
+        builder.startConditionInput(player);
     }
 
     private void cleanup() {
-        // desregistra este listener para evitar acumular instâncias
         HandlerList.unregisterAll(this);
     }
 }

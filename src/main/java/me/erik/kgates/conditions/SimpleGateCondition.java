@@ -1,103 +1,102 @@
 package me.erik.kgates.conditions;
 
-import org.bukkit.World;
+import me.clip.placeholderapi.PlaceholderAPI;
 import org.bukkit.entity.Player;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class SimpleGateCondition {
-
-    public enum ConditionType { PERMISSION, WEATHER, TIME, HEALTH }
-
-    private final ConditionType type;
-    private String stringValue;
-    private double numericValue;
-    private long endTime;
-
-    public SimpleGateCondition(ConditionType type, String value) {
-        this.type = type;
-        this.stringValue = value;
-    }
-
-    public SimpleGateCondition(ConditionType type, double numericValue) {
-        this.type = type;
-        this.numericValue = numericValue;
-    }
-
-    public SimpleGateCondition(long startTime, long endTime) {
-        this.type = ConditionType.TIME;
-        this.numericValue = startTime;
-        this.endTime = endTime;
-    }
-
-    public ConditionType getType() { return type; }
+public record SimpleGateCondition(String expression) {
 
     public boolean canActivate(Player player) {
-        World world = player.getWorld();
+        if (expression == null || expression.isEmpty()) return true;
 
-        return switch (type) {
-            case PERMISSION -> player.hasPermission(stringValue);
-            case WEATHER -> {
-                String weather = stringValue == null ? "" : stringValue.toUpperCase();
-                boolean raining = world.hasStorm();
-                boolean thunder = world.isThundering();
-                yield switch (weather) {
-                    case "SUN", "CLEAR" -> !raining && !thunder;
-                    case "RAIN" -> raining && !thunder;
-                    case "STORM", "THUNDER" -> thunder;
-                    default -> true;
-                };
+        // Substitui placeholders (ex: %player_health%)
+        String parsed = PlaceholderAPI.setPlaceholders(player, expression);
+
+        try {
+            return evaluateExpression(parsed);
+        } catch (Exception e) {
+            System.out.println("[KGates] Erro ao avaliar condição: " + parsed);
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public String getExpression() {
+        return expression;
+    }
+
+    private boolean evaluateExpression(String expr) {
+        expr = expr.trim().toLowerCase();
+
+        try {
+            // Suporte básico para operadores
+            if (expr.contains(">=")) {
+                String[] parts = expr.split(">=");
+                return parts.length >= 2 && Double.parseDouble(parts[0].trim()) >= Double.parseDouble(parts[1].trim());
+            } else if (expr.contains("<=")) {
+                String[] parts = expr.split("<=");
+                return parts.length >= 2 && Double.parseDouble(parts[0].trim()) <= Double.parseDouble(parts[1].trim());
+            } else if (expr.contains("!=")) {
+                String[] parts = expr.split("!=");
+                return parts.length >= 2 && !parts[0].trim().equalsIgnoreCase(parts[1].trim());
+            } else if (expr.contains("==")) {
+                String[] parts = expr.split("==");
+                return parts.length >= 2 && parts[0].trim().equalsIgnoreCase(parts[1].trim());
+            } else if (expr.contains(">")) {
+                String[] parts = expr.split(">");
+                return parts.length >= 2 && Double.parseDouble(parts[0].trim()) > Double.parseDouble(parts[1].trim());
+            } else if (expr.contains("<")) {
+                String[] parts = expr.split("<");
+                return parts.length >= 2 && Double.parseDouble(parts[0].trim()) < Double.parseDouble(parts[1].trim());
             }
-            case HEALTH -> player.getHealth() >= numericValue;
-            case TIME -> {
-                long currentTime = world.getTime();
-                long start = (long) numericValue;
-                long end = endTime;
-                yield (start <= end)
-                        ? (currentTime >= start && currentTime <= end)
-                        : (currentTime >= start || currentTime <= end);
-            }
-        };
+
+            // Caso não haja operador, aceita "true"/"false"
+            return expr.equalsIgnoreCase("true");
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     public Map<String, Object> serialize() {
         Map<String, Object> map = new HashMap<>();
-        map.put("type", type.name());
-
-        switch (type) {
-            case PERMISSION, WEATHER -> map.put("value", stringValue);
-            case HEALTH -> map.put("value", numericValue);
-            case TIME -> {
-                map.put("start", numericValue);
-                map.put("end", endTime);
-            }
-        }
-
+        map.put("expression", expression);
         return map;
     }
 
-    public static SimpleGateCondition deserialize(Map<String, Object> map) {
-        String typeStr = (String) map.get("type");
-        if (typeStr == null) return null;
-        ConditionType type = ConditionType.valueOf(typeStr);
+    public static SimpleGateCondition deserialize(Object obj) {
+        if (obj == null) return null;
 
-        return switch (type) {
-            case PERMISSION, WEATHER -> new SimpleGateCondition(type, (String) map.get("value"));
-            case HEALTH -> new SimpleGateCondition(type, ((Number) map.get("value")).doubleValue());
-            case TIME -> new SimpleGateCondition(
-                    ((Number) map.get("start")).longValue(),
-                    ((Number) map.get("end")).longValue()
-            );
-        };
+        // Bukkit pode retornar Map ou MemorySection, por isso tratamos ambos
+        if (obj instanceof Map<?, ?> map) {
+            Object exprObj = map.get("expression");
+            if (exprObj instanceof String expr && !expr.isBlank()) {
+                return new SimpleGateCondition(expr);
+            }
+        }
+
+        // Caso tenha vindo de outro formato, tenta interpretar diretamente
+        if (obj instanceof String expr && !expr.isBlank()) {
+            return new SimpleGateCondition(expr);
+        }
+
+        return null;
     }
 
     public String getDisplayText() {
-        return switch (type) {
-            case PERMISSION -> "Permission needed: " + stringValue;
-            case WEATHER -> "Weather: " + stringValue;
-            case HEALTH -> "Minimum health: " + numericValue;
-            case TIME -> "Time: " + numericValue + " → " + endTime;
-        };
+        return "Condition: " + expression;
+    }
+
+    public boolean evaluate(Player player) {
+        String expr = expression
+                .replace("%player_health%", String.valueOf(player.getHealth()))
+                .replace("%player_y%", String.valueOf(player.getLocation().getY()));
+
+        try {
+            return evaluateExpression(expr);
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

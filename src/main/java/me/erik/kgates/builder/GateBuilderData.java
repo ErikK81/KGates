@@ -44,9 +44,12 @@ public class GateBuilderData {
     private boolean awaitingSoundInput = false;
     private boolean settingAmbient = true; // true=ambient, false=activation
 
+    // Agora condições são livres (strings com placeholders)
     private final List<SimpleGateCondition> conditions = new ArrayList<>();
     private final List<String> commands = new ArrayList<>();
-    private SimpleGateCondition.ConditionType waitingConditionType;
+
+    // Indica se o jogador está digitando uma nova condição
+    private boolean awaitingConditionInput = false;
 
     public GateBuilderData(UUID playerId, String id) {
         this.playerId = playerId;
@@ -108,30 +111,39 @@ public class GateBuilderData {
 
     // -------------------- Conditions --------------------
     public List<SimpleGateCondition> getConditions() { return conditions; }
+
     public void addCondition(SimpleGateCondition condition) {
-        if (condition == null) return;
-        conditions.removeIf(c -> c.getType() == condition.getType());
-        conditions.add(condition);
+        if (condition != null && condition.getExpression() != null && !condition.getExpression().isBlank()) {
+            conditions.add(condition);
+        }
     }
-    public void removeCondition(SimpleGateCondition.ConditionType type) { conditions.removeIf(c -> c.getType() == type); }
-    public SimpleGateCondition.ConditionType getWaitingConditionType() { return waitingConditionType; }
-    public void setWaitingConditionType(SimpleGateCondition.ConditionType waitingConditionType) { this.waitingConditionType = waitingConditionType; }
+
+
+    public void removeCondition(int index) {
+        if (index >= 0 && index < conditions.size()) {
+            conditions.remove(index);
+        }
+    }
+
+    public void clearConditions() { conditions.clear(); }
+
+    public boolean isAwaitingConditionInput() { return awaitingConditionInput; }
+    public void setAwaitingConditionInput(boolean awaitingConditionInput) { this.awaitingConditionInput = awaitingConditionInput; }
+
+    public void startConditionInput(Player player) {
+        this.awaitingConditionInput = true;
+        player.closeInventory();
+        player.sendMessage(ChatColor.AQUA + "Digite a condição usando PlaceholderAPI, por exemplo:");
+        player.sendMessage(ChatColor.YELLOW + "%player_health% > 10");
+        player.sendMessage(ChatColor.AQUA + "ou digite " + ChatColor.RED + "'cancel'" + ChatColor.AQUA + " para cancelar.");
+    }
+
 
     // -------------------- Commands --------------------
     public List<String> getCommands() { return commands; }
     public void addCommand(String command) { if (command != null && !command.isBlank()) commands.add(command); }
     public void removeCommand(int index) { if (index >= 0 && index < commands.size()) commands.remove(index); }
     public void clearCommands() { commands.clear(); }
-
-    // -------------------- Input Prompts --------------------
-    public void startConditionInput(SimpleGateCondition.ConditionType type, Player player) {
-        this.waitingConditionType = type;
-        player.closeInventory();
-        player.sendMessage(ChatColor.AQUA + "Type the value for condition "
-                + ChatColor.YELLOW + type.name()
-                + ChatColor.AQUA + " in chat, or type "
-                + ChatColor.RED + "'cancel'" + ChatColor.AQUA + " to abort.");
-    }
 
     // -------------------- Validation --------------------
     public boolean isComplete() {
