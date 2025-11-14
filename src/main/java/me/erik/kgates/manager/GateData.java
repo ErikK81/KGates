@@ -93,15 +93,6 @@ public class GateData {
     public float getActivationSoundPitch() { return activationSoundPitch; }
     public void setActivationSoundPitch(float activationSoundPitch) { this.activationSoundPitch = activationSoundPitch; }
 
-    // -------------------- Conditions --------------------
-    public boolean canActivate(org.bukkit.entity.Player player) {
-        if (conditions.isEmpty()) return true;
-        for (SimpleGateCondition condition : conditions) {
-            if (!condition.evaluate(player)) return false;
-        }
-        return true;
-    }
-
     // -------------------- Serialization --------------------
     public Map<String, Object> serialize() {
         Map<String, Object> map = new HashMap<>();

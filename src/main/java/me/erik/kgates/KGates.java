@@ -14,7 +14,7 @@ public final class KGates extends JavaPlugin {
     private static KGates instance;
 
     private GateManager gateManager;
-    private GateBuilderManager builderManager;
+    private static GateBuilderManager builderManager;
     private BuilderGUIListener builderGUI;
 
     @Override
@@ -52,5 +52,9 @@ public final class KGates extends JavaPlugin {
 
     public static KGates getInstance() {
         return instance;
+    }
+
+    public static GateBuilderManager getBuilderManager() {
+        return builderManager;
     }
 }

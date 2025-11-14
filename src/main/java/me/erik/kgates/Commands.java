@@ -1,8 +1,6 @@
 package me.erik.kgates;
 
-import me.erik.kgates.builder.BuilderGUIListener;
-import me.erik.kgates.builder.GateBuilderData;
-import me.erik.kgates.builder.GateBuilderManager;
+import me.erik.kgates.builder.*;
 import me.erik.kgates.manager.GateData;
 import me.erik.kgates.manager.GateManager;
 import org.bukkit.Bukkit;
@@ -15,9 +13,11 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class Commands implements CommandExecutor, TabCompleter {
@@ -35,7 +35,12 @@ public class Commands implements CommandExecutor, TabCompleter {
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    public boolean onCommand(
+            @NotNull CommandSender sender,
+            @NotNull Command command,
+            @NotNull String label,
+            String[] args
+    ) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage(ChatColor.RED + "Only players can use this command!");
             return true;
@@ -63,7 +68,7 @@ public class Commands implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    // ---------------- CREATE GATE ----------------
+    // ---------------- CREATE ----------------
 
     private void handleCreate(Player player, String[] args) {
         if (args.length < 2) {
@@ -82,7 +87,7 @@ public class Commands implements CommandExecutor, TabCompleter {
         builderManager.startBuilding(builder);
 
         player.sendMessage(ChatColor.GREEN + "Gate '" + ChatColor.YELLOW + id + ChatColor.GREEN + "' creation started!");
-        guiListener.openBuilderGUI(player, builder);
+        BuilderGUI.openPortalEditor(player, builder); // atualizado e correto
     }
 
     // ---------------- REMOVE ----------------
@@ -110,10 +115,6 @@ public class Commands implements CommandExecutor, TabCompleter {
             player.sendMessage(ChatColor.RED + "Usage: /kgate edit <id>");
             return;
         }
-        if (!builderManager.startEditing(args[1])) {
-            player.sendMessage(ChatColor.RED + "This portal is currently being edited by someone else.");
-            return;
-        }
 
         String id = args[1].toLowerCase();
         GateData gate = gateManager.getGate(id);
@@ -123,8 +124,16 @@ public class Commands implements CommandExecutor, TabCompleter {
             return;
         }
 
+        if (!builderManager.startEditing(id)) {
+            player.sendMessage(ChatColor.RED + "This portal is currently being edited by someone else.");
+            return;
+        }
+
         player.sendMessage(ChatColor.AQUA + "Opening GUI to edit gate: " + ChatColor.YELLOW + id);
-        guiListener.openBuilderForEdit(player, gate);
+        GateBuilderData builder = new GateBuilderData(player.getUniqueId(), id);
+        builderManager.startBuilding(builder);
+        // Aqui atualizamos:
+        BuilderGUI.openPortalEditor(player, builder); // atualizado e correto
     }
 
     // ---------------- BROWSE ----------------
@@ -136,18 +145,18 @@ public class Commands implements CommandExecutor, TabCompleter {
             return;
         }
 
-        int size = ((gates.size() - 1) / 9 + 1) * 9; // múltiplo de 9
+        int size = ((gates.size() - 1) / 9 + 1) * 9;
         Inventory inv = Bukkit.createInventory(null, size, "✦ Browse Portals");
 
         for (int i = 0; i < gates.size(); i++) {
             GateData gate = gates.get(i);
-            inv.setItem(i, BuilderGUIListener.item(Material.PAPER, ChatColor.AQUA + gate.getId()));
+            inv.setItem(i, BuilderGUIItems.item(Material.PAPER, ChatColor.AQUA + gate.getId(), Collections.singletonList("")));
         }
 
         player.openInventory(inv);
     }
 
-    // ---------------- TELEPORT ----------------
+    // ---------------- GO ----------------
 
     private void handleGo(Player player, String[] args) {
         if (args.length < 3) {
@@ -178,11 +187,12 @@ public class Commands implements CommandExecutor, TabCompleter {
         }
 
         player.teleport(target);
-        player.sendMessage(ChatColor.GREEN + "Teleported to point " + ChatColor.YELLOW + point +
-                ChatColor.GREEN + " of gate " + ChatColor.YELLOW + name + ChatColor.GREEN + "!");
+        player.sendMessage(ChatColor.GREEN + "Teleported to point " +
+                ChatColor.YELLOW + point + ChatColor.GREEN +
+                " of gate " + ChatColor.YELLOW + name + ChatColor.GREEN + "!");
     }
 
-        // ---------------- USAGE ----------------
+    // ---------------- USAGE ----------------
 
     private void sendUsage(Player player) {
         player.sendMessage(ChatColor.GOLD + "KGates Commands:");
@@ -196,15 +206,18 @@ public class Commands implements CommandExecutor, TabCompleter {
     // ---------------- TAB COMPLETE ----------------
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+    public List<String> onTabComplete(
+            @NotNull CommandSender sender,
+            @NotNull Command command,
+            @NotNull String alias,
+            String[] args
+    ) {
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
-            for (String sub : subCommands) {
-                if (sub.startsWith(args[0].toLowerCase())) {
-                    completions.add(sub);
-                }
-            }
+            subCommands.stream()
+                    .filter(s -> s.startsWith(args[0].toLowerCase()))
+                    .forEach(completions::add);
         } else if (args.length == 2) {
             String sub = args[0].toLowerCase();
             if (sub.equals("remove") || sub.equals("edit") || sub.equals("go")) {

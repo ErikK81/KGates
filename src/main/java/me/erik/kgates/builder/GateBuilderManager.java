@@ -14,6 +14,13 @@ public class GateBuilderManager {
 
     private final Set<String> gatesBeingEdited = new HashSet<>();
 
+    // Novo handler integrado
+    private final BuilderInputHandler inputHandler = new BuilderInputHandler();
+
+    public BuilderInputHandler getInputHandler() {
+        return inputHandler;
+    }
+
     // ---------------------------------------------------
     // Builder lifecycle
     // ---------------------------------------------------
@@ -21,6 +28,7 @@ public class GateBuilderManager {
     public void startBuilding(GateBuilderData builder) {
         UUID id = builder.getPlayerId();
         activeBuilders.put(id, builder);
+
         waitingForName.put(id, false);
         waitingForBlockClick.put(id, false);
         waitingForPointA.put(id, true);
@@ -44,48 +52,44 @@ public class GateBuilderManager {
     // ---------------------------------------------------
 
     public boolean startEditing(String gateId) {
-        return gatesBeingEdited.add(gateId); // true se não estava sendo editado
-    }
-
-    public void stopEditing(String gateId) {
-        gatesBeingEdited.remove(gateId);
+        return gatesBeingEdited.add(gateId);
     }
 
     // ---------------------------------------------------
     // Accessors
     // ---------------------------------------------------
 
-    public GateBuilderData getBuilder(UUID playerId) { return activeBuilders.get(playerId); }
-    public boolean isBuilding(UUID playerId) { return activeBuilders.containsKey(playerId); }
+    public GateBuilderData getBuilder(UUID playerId) {
+        return activeBuilders.get(playerId);
+    }
+
+    public boolean isBuilding(UUID playerId) {
+        return activeBuilders.containsKey(playerId);
+    }
 
     public void setWaitingForName(UUID playerId, boolean waiting) {
         if (isBuilding(playerId)) waitingForName.put(playerId, waiting);
     }
-    public boolean isWaitingForName(UUID playerId) { return waitingForName.getOrDefault(playerId, false); }
+
+    public boolean isWaitingForName(UUID playerId) {
+        return waitingForName.getOrDefault(playerId, false);
+    }
 
     public void setWaitingForBlockClick(UUID playerId, boolean waiting) {
         if (isBuilding(playerId)) waitingForBlockClick.put(playerId, waiting);
     }
-    public boolean isWaitingForBlockClick(UUID playerId) { return waitingForBlockClick.getOrDefault(playerId, false); }
+
+    public boolean isWaitingForBlockClick(UUID playerId) {
+        return waitingForBlockClick.getOrDefault(playerId, false);
+    }
 
     public void setWaitingForPointA(UUID playerId, boolean isPointA) {
         if (isBuilding(playerId)) waitingForPointA.put(playerId, isPointA);
     }
-    public boolean isWaitingForPointA(UUID playerId) { return waitingForPointA.getOrDefault(playerId, true); }
 
-    public void setWaitingForDetectionRadius(UUID playerId, boolean waiting) {
-        if (isBuilding(playerId)) waitingForDetectionRadius.put(playerId, waiting);
+    public boolean isWaitingForPointA(UUID playerId) {
+        return waitingForPointA.getOrDefault(playerId, true);
     }
-    public boolean isWaitingForDetectionRadius(UUID playerId) { return waitingForDetectionRadius.getOrDefault(playerId, false); }
-
-    public void setWaitingForCooldown(UUID playerId, boolean waiting) {
-        if (isBuilding(playerId)) waitingForCooldown.put(playerId, waiting);
-    }
-    public boolean isWaitingForCooldown(UUID playerId) { return waitingForCooldown.getOrDefault(playerId, false); }
-
-    // ---------------------------------------------------
-    // New dynamic condition system
-    // ---------------------------------------------------
 
     public void setWaitingForConditionInput(UUID playerId, boolean waiting) {
         if (isBuilding(playerId)) waitingForConditionInput.put(playerId, waiting);

@@ -1,6 +1,7 @@
 package me.erik.kgates.conditions;
 
 import me.erik.kgates.builder.BuilderGUIListener;
+import me.erik.kgates.builder.BuilderInputHandler;
 import me.erik.kgates.builder.GateBuilderData;
 import me.erik.kgates.builder.GateBuilderManager;
 import me.erik.kgates.manager.GateManager;
@@ -13,9 +14,10 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 
 import static me.erik.kgates.KGates.getInstance;
 
-public record ConditionChatListener(GateBuilderManager builderManager,
-                                    GateManager gateManager,
-                                    BuilderGUIListener builderGUI) implements Listener {
+public record ConditionChatListener(
+        GateBuilderManager builderManager,
+        GateManager gateManager,
+        BuilderGUIListener builderGUI) implements Listener {
 
     @EventHandler
     public void onChat(AsyncPlayerChatEvent event) {
@@ -25,40 +27,37 @@ public record ConditionChatListener(GateBuilderManager builderManager,
         GateBuilderData builder = builderManager.getBuilder(player.getUniqueId());
         if (builder == null) return;
 
-        // Garante que o jogador está no modo de input
-        if (builder.isAwaitingConditionInput() && !builderManager.isWaitingForConditionInput(player.getUniqueId())) {
-            builderManager.setWaitingForConditionInput(player.getUniqueId(), true);
+        // Se nenhum input de condição está ativo, não é nosso evento
+        if (!builder.isAwaitingConditionInput()) return;
+
+        // Cancela o chat normal
+        event.setCancelled(true);
+
+        // Processa "cancel" antes do handler
+        if (msg.equalsIgnoreCase("cancel")) {
+            builder.setAwaitingConditionInput(false);
+            player.sendMessage(ChatColor.RED + "Entrada de condição cancelada.");
+            Bukkit.getScheduler().runTask(getInstance(),
+                    () -> new ConditionGUI(builder).openMain(player));
+            return;
         }
 
-        if (!builderManager.isWaitingForConditionInput(player.getUniqueId())) return;
+        // Lida com a condição via BuilderInputHandler (mantém o padrão!)
+        boolean handled = BuilderInputHandler.handle(player, builder, msg);
 
-        // Cancela o chat padrão e processa o input
-        event.setCancelled(true);
-        builderManager.setWaitingForConditionInput(player.getUniqueId(), false);
-        builder.setAwaitingConditionInput(false);
+        if (!handled) {
+            // Isso só ocorre se o flag estava ativo mas o handler não tratou
+            player.sendMessage(ChatColor.RED + "Formato inválido! Exemplo: %player_health% >= 10");
+            return;
+        }
 
+        // Condição foi aceita — abrir GUI novamente
         Bukkit.getScheduler().runTask(getInstance(), () -> {
-            try {
-                if (msg.equalsIgnoreCase("cancel")) {
-                    player.sendMessage(ChatColor.RED + "Condição cancelada.");
-                    new ConditionGUI(builder, builderGUI).openMain(player);
-                    return;
-                }
-
-                SimpleGateCondition condition = new SimpleGateCondition(msg);
-                builder.addCondition(condition);
-                gateManager.addGateFromBuilder(builder);
-
-                player.sendMessage(ChatColor.GREEN + "Condição salva: " + ChatColor.WHITE + msg);
-
-                ConditionGUI gui = new ConditionGUI(builder, builderGUI);
-                Bukkit.getPluginManager().registerEvents(gui, getInstance());
-                gui.openMain(player);
-
-            } catch (Exception ex) {
-                player.sendMessage(ChatColor.RED + "Formato inválido! Exemplo: %player_health% >= 10");
-                ex.printStackTrace();
-            }
+            new ConditionGUI(builder).openMain(player);
         });
+
+        // (Opcional)
+        // Se você quiser criar automaticamente o gate após condição:
+        // gateManager.addGateFromBuilder(builder);
     }
 }
