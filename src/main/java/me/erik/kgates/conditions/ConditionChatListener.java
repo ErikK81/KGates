@@ -38,7 +38,7 @@ public record ConditionChatListener(
             builder.setAwaitingConditionInput(false);
             player.sendMessage(ChatColor.RED + "Entrada de condição cancelada.");
             Bukkit.getScheduler().runTask(getInstance(),
-                    () -> new ConditionGUI(builder).openMain(player));
+                    () -> new ConditionGUI().open(player, builder));
             return;
         }
 
@@ -53,7 +53,7 @@ public record ConditionChatListener(
 
         // Condição foi aceita — abrir GUI novamente
         Bukkit.getScheduler().runTask(getInstance(), () -> {
-            new ConditionGUI(builder).openMain(player);
+            new ConditionGUI().open(player, builder);
         });
 
         // (Opcional)

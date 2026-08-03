@@ -33,13 +33,34 @@ public class GateManager {
 
 
     public void addGateFromBuilder(GateBuilderData builder) {
+        if (!builder.isComplete()) {
+            throw new IllegalArgumentException("Gate points must reference loaded worlds");
+        }
         GateData gate = new GateData(builder.getId(), builder.getLocA(), builder.getLocB());
 
         // Define o tipo do portal usando a enum
         gate.setType(GateData.PortalType.valueOf(builder.getType()));
 
         gate.setDetectionRadius(builder.getDetectionRadius());
+        gate.setShape(builder.getShape());
+        gate.setSizeX(builder.getSizeX());
+        gate.setSizeY(builder.getSizeY());
+        gate.setSizeZ(builder.getSizeZ());
         gate.setCooldownTicks(builder.getCooldownTicks());
+
+        gate.setAmbientParticle(builder.getAmbientParticle());
+        gate.setEntryParticle(builder.getEntryParticle());
+        gate.setEntryParticleCount(builder.getEntryParticleCount());
+        gate.setEntryParticleSpeed(builder.getEntryParticleSpeed());
+        gate.setExitParticle(builder.getExitParticle());
+        gate.setExitParticleCount(builder.getExitParticleCount());
+        gate.setExitParticleSpeed(builder.getExitParticleSpeed());
+        gate.setAmbientParticleCount(builder.getAmbientParticleCount());
+        gate.setAmbientParticleSpeed(builder.getAmbientParticleSpeed());
+        gate.setAmbientSound(builder.getAmbientSound());
+        gate.setActivationSound(builder.getActivationSound());
+        gate.setActivationSoundVolume(builder.getSoundVolume());
+        gate.setActivationSoundPitch(builder.getSoundPitch());
 
         // Adiciona condições
         for (SimpleGateCondition cond : builder.getConditions()) {
@@ -71,6 +92,9 @@ public class GateManager {
 
     public void saveAll() {
         for (GateData gate : gates.values()) {
+            // Keep the existing YAML untouched when an old portal references a world
+            // that is not currently loaded. It can be recovered after that world loads.
+            if (!gate.hasResolvedLocations()) continue;
             config.set("portals." + gate.getId(), gate.serialize());
         }
         saveFile();

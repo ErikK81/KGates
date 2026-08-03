@@ -7,7 +7,16 @@ commands:
   kgate:
     description: Manage the portals
     usage: /kgate
+  warp:
+    description: Teleporta e administra warps
+    usage: /warp <local>
 permissions:
   kgates.admin:
     description: Permite usar comandos administrativos do KGates
+    default: op
+  kgates.warp:
+    description: Permite teleportar para warps
+    default: true
+  kgates.warp.admin:
+    description: Permite criar e remover warps
     default: op

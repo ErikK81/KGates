@@ -87,7 +87,7 @@ public class Commands implements CommandExecutor, TabCompleter {
         builderManager.startBuilding(builder);
 
         player.sendMessage(ChatColor.GREEN + "Gate '" + ChatColor.YELLOW + id + ChatColor.GREEN + "' creation started!");
-        BuilderGUI.openPortalEditor(player, builder); // atualizado e correto
+        guiListener.gui().openEditor(player, builder);
     }
 
     // ---------------- REMOVE ----------------
@@ -130,10 +130,9 @@ public class Commands implements CommandExecutor, TabCompleter {
         }
 
         player.sendMessage(ChatColor.AQUA + "Opening GUI to edit gate: " + ChatColor.YELLOW + id);
-        GateBuilderData builder = new GateBuilderData(player.getUniqueId(), id);
+        GateBuilderData builder = GateBuilderData.fromGate(player.getUniqueId(), gate);
         builderManager.startBuilding(builder);
-        // Aqui atualizamos:
-        BuilderGUI.openPortalEditor(player, builder); // atualizado e correto
+        guiListener.gui().openEditor(player, builder);
     }
 
     // ---------------- BROWSE ----------------
@@ -145,15 +144,7 @@ public class Commands implements CommandExecutor, TabCompleter {
             return;
         }
 
-        int size = ((gates.size() - 1) / 9 + 1) * 9;
-        Inventory inv = Bukkit.createInventory(null, size, "✦ Browse Portals");
-
-        for (int i = 0; i < gates.size(); i++) {
-            GateData gate = gates.get(i);
-            inv.setItem(i, BuilderGUIItems.item(Material.PAPER, ChatColor.AQUA + gate.getId(), Collections.singletonList("")));
-        }
-
-        player.openInventory(inv);
+        guiListener.gui().openBrowser(player);
     }
 
     // ---------------- GO ----------------
@@ -183,6 +174,12 @@ public class Commands implements CommandExecutor, TabCompleter {
 
         if (target == null) {
             player.sendMessage(ChatColor.RED + "Point " + point + " is not set for this gate.");
+            return;
+        }
+
+        if (target.getWorld() == null) {
+            player.sendMessage(ChatColor.RED + "The world of point " + point + " is not loaded or no longer exists.");
+            player.sendMessage(ChatColor.GRAY + "Load the world or redefine this point in the gate editor.");
             return;
         }
 

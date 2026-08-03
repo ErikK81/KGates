@@ -38,7 +38,8 @@ public class GateBuilderManager {
     }
 
     public void stopBuilding(UUID playerId) {
-        activeBuilders.remove(playerId);
+        GateBuilderData builder = activeBuilders.remove(playerId);
+        if (builder != null) gatesBeingEdited.remove(builder.getId());
         waitingForName.remove(playerId);
         waitingForBlockClick.remove(playerId);
         waitingForPointA.remove(playerId);

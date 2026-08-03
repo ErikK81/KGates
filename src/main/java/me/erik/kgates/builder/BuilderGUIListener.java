@@ -1,122 +1,64 @@
 package me.erik.kgates.builder;
 
 import me.erik.kgates.manager.GateManager;
-import me.erik.kgates.conditions.ConditionGUI;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
-public class BuilderGUIListener implements Listener {
+import static me.erik.kgates.KGates.getInstance;
 
+public final class BuilderGUIListener implements Listener {
     private final BuilderGUI gui;
     private final GateBuilderManager builderManager;
 
     public BuilderGUIListener(GateBuilderManager builderManager, GateManager gateManager) {
         this.builderManager = builderManager;
-        this.gui = new BuilderGUI(builderManager, gateManager, this);
+        this.gui = new BuilderGUI(builderManager, gateManager);
     }
+
+    public BuilderGUI gui() { return gui; }
+
+    @EventHandler public void onInventoryClick(InventoryClickEvent event) { gui.handleInventoryClick(event); }
+    @EventHandler public void onPlayerInteract(PlayerInteractEvent event) { gui.handleBlockClick(event); }
 
     @EventHandler
-    public void onInventoryClick(InventoryClickEvent event) {
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getInventory().getHolder() instanceof BuilderMenuHolder holder)) return;
+        if (holder.menu() == BuilderMenuHolder.Menu.BROWSE) return;
+        if (!(event.getPlayer() instanceof Player player)) return;
 
-        // GUI de condições
-        if (ChatColor.stripColor(event.getView().getTitle()).equalsIgnoreCase("Gate Conditions")) {
+        // Inventory navigation also fires a close event. Waiting one tick lets us
+        // distinguish navigation/input prompts from an intentional manual close.
+        Bukkit.getScheduler().runTask(getInstance(), () -> {
+            GateBuilderData data = builderManager.getBuilder(player.getUniqueId());
+            if (data == null) return;
+            if (player.getOpenInventory().getTopInventory().getHolder() instanceof BuilderMenuHolder) return;
+            if (data.isAwaitingAnyInput() || builderManager.isWaitingForBlockClick(player.getUniqueId())) return;
 
-            event.setCancelled(true);
-
-            if (!(event.getWhoClicked() instanceof Player player)) return;
-            var builder = builderManager.getBuilder(player.getUniqueId());
-            if (builder == null) return;
-
-            int slot = event.getRawSlot();
-
-            // botão voltar
-            if (slot == 18) {
-                player.closeInventory();
-                BuilderGUI.openPortalEditor(player, builder);
-                return;
-            }
-
-            // slot da condição
-            if (slot == 13) {
-
-                // botão direito → limpar tudo
-                if (event.isRightClick()) {
-                    builder.clearConditions();
-                    player.sendMessage(ChatColor.RED + "Todas as condições foram removidas!");
-                    player.closeInventory();
-                    new ConditionGUI(builder).openMain(player);
-                    return;
-                }
-
-                // botão esquerdo → começar input via chat
-                player.closeInventory();
-
-                player.sendMessage(ChatColor.YELLOW + "Digite a condição usando placeholders:");
-                player.sendMessage(ChatColor.GRAY + "Exemplo: %player_health% >= 10");
-                player.sendMessage(ChatColor.DARK_GRAY + "(digite 'cancel' para cancelar)");
-
-                builder.setAwaitingConditionInput(true);
-                return;
-            }
-
-            return;
-        }
-
-        // Lógica da BuilderGUI normal
-        gui.handleInventoryClick(event);
+            builderManager.stopBuilding(player.getUniqueId());
+            player.sendMessage(ChatColor.RED + "Modo de edição encerrado.");
+        });
     }
-
-    @EventHandler
-    public void onPlayerInteract(PlayerInteractEvent event) {
-        gui.handleBlockClick(event);
-    }
-
-    // ======================================================
-    //               INPUT VIA CHAT (NOVO)
-    // ======================================================
 
     @EventHandler
     public void onChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
-
         GateBuilderData data = builderManager.getBuilder(player.getUniqueId());
-        if (data == null) return;
-
-        // se não estiver esperando input que NÃO seja condição, ignora
-        if (!data.isAwaitingAnyInput() || data.isAwaitingConditionInput()) return;
-
+        if (data == null || !data.isAwaitingAnyInput() || data.isAwaitingConditionInput()) return;
         event.setCancelled(true);
-        String msg = event.getMessage().trim();
-
-        // Cancelamento universal
-        if (msg.equalsIgnoreCase("cancel") || msg.equalsIgnoreCase("cancelar")) {
+        String message = event.getMessage().trim();
+        if (message.equalsIgnoreCase("cancel") || message.equalsIgnoreCase("cancelar")) {
             data.clearAllAwaitingFlags();
-            player.sendMessage("§cInput cancelado.");
-            reopenBuilderGUI(player, data);
-            return;
+            player.sendMessage(ChatColor.RED + "Entrada cancelada.");
+        } else if (!BuilderInputHandler.handle(player, data, message)) {
+            player.sendMessage(ChatColor.RED + "Nenhuma entrada estava pendente.");
         }
-
-        // Envia para o handler
-        boolean handled = BuilderInputHandler.handle(player, data, msg);
-
-        if (!handled) {
-            player.sendMessage("§cNão estou esperando esse tipo de input agora.");
-            return;
-        }
-
-        // Input OK → reabrir GUI principal
-        reopenBuilderGUI(player, data);
+        Bukkit.getScheduler().runTask(getInstance(), () -> gui.openEditor(player, data));
     }
-    private void reopenBuilderGUI(Player player, GateBuilderData data) {
-        Bukkit.getScheduler().runTask(me.erik.kgates.KGates.getInstance(), () -> {
-            BuilderGUI.openPortalEditor(player, data);
-        });
-    }
-
 }
