@@ -8,6 +8,7 @@ import me.erik.kgates.listeners.PortalListener;
 import me.erik.kgates.manager.GateManager;
 import me.erik.kgates.manager.WarpManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.command.PluginCommand;
 
 import java.util.Objects;
 
@@ -30,14 +31,15 @@ public final class KGates extends JavaPlugin {
         builderGUI = new BuilderGUIListener(builderManager, gateManager);
         warpManager = new WarpManager(this);
 
-        // Registrar comandos
-        Objects.requireNonNull(getCommand("kgate"))
-                .setExecutor(new Commands(gateManager, builderManager, builderGUI));
-        Objects.requireNonNull(getCommand("kgate"))
-                .setTabCompleter(new Commands(gateManager, builderManager, builderGUI));
+        // Reuse the same command instance so executor and tab completion share state.
+        Commands gateCommand = new Commands(gateManager, builderManager, builderGUI);
+        PluginCommand kgate = Objects.requireNonNull(getCommand("kgate"), "kgate missing from plugin.yml");
+        kgate.setExecutor(gateCommand);
+        kgate.setTabCompleter(gateCommand);
         WarpCommand warpCommand = new WarpCommand(warpManager);
-        Objects.requireNonNull(getCommand("warp")).setExecutor(warpCommand);
-        Objects.requireNonNull(getCommand("warp")).setTabCompleter(warpCommand);
+        PluginCommand warp = Objects.requireNonNull(getCommand("warp"), "warp missing from plugin.yml");
+        warp.setExecutor(warpCommand);
+        warp.setTabCompleter(warpCommand);
 
         // Registrar listeners
         PortalListener portalListener = new PortalListener(gateManager);
@@ -58,6 +60,8 @@ public final class KGates extends JavaPlugin {
             getLogger().warning("GateManager não estava inicializado, pulando salvamento.");
         }
         if (warpManager != null) warpManager.save();
+        instance = null;
+        builderManager = null;
     }
 
     public static KGates getInstance() {

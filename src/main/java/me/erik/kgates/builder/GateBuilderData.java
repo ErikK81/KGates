@@ -38,6 +38,7 @@ public class GateBuilderData {
     private int entryParticleCount = 10;
     private int exitParticleCount = 10;
     private double ambientParticleSpeed = 0.1;
+    private long ambientParticleIntervalTicks = 10;
     private double entryParticleSpeed = 0.1;
     private double exitParticleSpeed = 0.1;
 
@@ -50,6 +51,7 @@ public class GateBuilderData {
     // --- Builder Input Flags (apenas estados, sem lógica) ---
     private boolean awaitingRadius = false;
     private boolean awaitingCooldown = false;
+    private boolean awaitingAmbientParticleInterval = false;
     private boolean awaitingSizeX = false;
     private boolean awaitingSizeY = false;
     private boolean awaitingSizeZ = false;
@@ -123,6 +125,8 @@ public class GateBuilderData {
     public void setExitParticleCount(int value) { this.exitParticleCount = value; }
     public double getAmbientParticleSpeed() { return ambientParticleSpeed; }
     public void setAmbientParticleSpeed(double value) { this.ambientParticleSpeed = value; }
+    public long getAmbientParticleIntervalTicks() { return ambientParticleIntervalTicks; }
+    public void setAmbientParticleIntervalTicks(long value) { ambientParticleIntervalTicks = Math.max(1L, value); }
     public double getEntryParticleSpeed() { return entryParticleSpeed; }
     public void setEntryParticleSpeed(double value) { this.entryParticleSpeed = value; }
     public double getExitParticleSpeed() { return exitParticleSpeed; }
@@ -147,6 +151,8 @@ public class GateBuilderData {
 
     public boolean isAwaitingCooldown() { return awaitingCooldown; }
     public void setAwaitingCooldown(boolean awaitingCooldown) { this.awaitingCooldown = awaitingCooldown; }
+    public boolean isAwaitingAmbientParticleInterval() { return awaitingAmbientParticleInterval; }
+    public void setAwaitingAmbientParticleInterval(boolean value) { awaitingAmbientParticleInterval = value; }
     public boolean isAwaitingSizeX() { return awaitingSizeX; }
     public void setAwaitingSizeX(boolean value) { awaitingSizeX = value; }
     public boolean isAwaitingSizeY() { return awaitingSizeY; }
@@ -204,6 +210,7 @@ public class GateBuilderData {
         builder.setEntryParticleCount(gate.getEntryParticleCount());
         builder.setExitParticleCount(gate.getExitParticleCount());
         builder.setAmbientParticleSpeed(gate.getAmbientParticleSpeed());
+        builder.setAmbientParticleIntervalTicks(gate.getAmbientParticleIntervalTicks());
         builder.setEntryParticleSpeed(gate.getEntryParticleSpeed());
         builder.setExitParticleSpeed(gate.getExitParticleSpeed());
 
@@ -224,7 +231,7 @@ public class GateBuilderData {
         return builder;
     }
     public boolean isAwaitingAnyInput() {
-        return awaitingRadius || awaitingCooldown || awaitingSizeX || awaitingSizeY || awaitingSizeZ || awaitingCommandInput ||
+        return awaitingRadius || awaitingCooldown || awaitingAmbientParticleInterval || awaitingSizeX || awaitingSizeY || awaitingSizeZ || awaitingCommandInput ||
                 awaitingCommandRemoval || awaitingParticleInput || awaitingParticleCount ||
                 awaitingParticleSpeed || awaitingSoundInput ||
                 awaitingConditionInput;
@@ -233,6 +240,7 @@ public class GateBuilderData {
     public void clearAllAwaitingFlags() {
         awaitingRadius = false;
         awaitingCooldown = false;
+        awaitingAmbientParticleInterval = false;
         awaitingSizeX = false;
         awaitingSizeY = false;
         awaitingSizeZ = false;

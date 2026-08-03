@@ -93,6 +93,10 @@ public final class BuilderGUIItems {
         return action(Material.SUGAR, "Velocidade " + label, Double.toString(value));
     }
 
+    public static ItemStack ambientParticleInterval(GateBuilderData data) {
+        return action(Material.REPEATER, "Intervalo das particulas", data.getAmbientParticleIntervalTicks() + " ticks");
+    }
+
     public static ItemStack ambientSound(GateBuilderData data) {
         return action(Material.NOTE_BLOCK, "Som ambiente", data.getAmbientSound().toString());
     }

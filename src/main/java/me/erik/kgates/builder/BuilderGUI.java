@@ -107,6 +107,7 @@ public final class BuilderGUI {
             case EffectsGUI.AMBIENT_PARTICLE -> promptParticle(player, GateBuilderData.ParticleStage.AMBIENT);
             case EffectsGUI.AMBIENT_COUNT -> promptParticleNumber(player, GateBuilderData.ParticleStage.AMBIENT, true);
             case EffectsGUI.AMBIENT_SPEED -> promptParticleNumber(player, GateBuilderData.ParticleStage.AMBIENT, false);
+            case EffectsGUI.AMBIENT_INTERVAL -> promptNumber(player, "ambient_interval");
             case EffectsGUI.ENTRY_PARTICLE -> promptParticle(player, GateBuilderData.ParticleStage.ENTRY);
             case EffectsGUI.ENTRY_COUNT -> promptParticleNumber(player, GateBuilderData.ParticleStage.ENTRY, true);
             case EffectsGUI.ENTRY_SPEED -> promptParticleNumber(player, GateBuilderData.ParticleStage.ENTRY, false);

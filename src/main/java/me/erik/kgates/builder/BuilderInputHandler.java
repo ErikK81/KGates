@@ -20,6 +20,7 @@ public class BuilderInputHandler {
         switch (type.toLowerCase()) {
             case "radius" -> data.setAwaitingRadius(true);
             case "cooldown" -> data.setAwaitingCooldown(true);
+            case "ambient_interval" -> data.setAwaitingAmbientParticleInterval(true);
             case "size_x" -> data.setAwaitingSizeX(true);
             case "size_y" -> data.setAwaitingSizeY(true);
             case "size_z" -> data.setAwaitingSizeZ(true);
@@ -80,6 +81,7 @@ public class BuilderInputHandler {
 
         if (data.isAwaitingRadius()) return handleRadius(player, data, msg);
         if (data.isAwaitingCooldown()) return handleCooldown(player, data, msg);
+        if (data.isAwaitingAmbientParticleInterval()) return handleAmbientParticleInterval(player, data, msg);
         if (data.isAwaitingSizeX()) return handlePortalSize(player, data, msg, 'x');
         if (data.isAwaitingSizeY()) return handlePortalSize(player, data, msg, 'y');
         if (data.isAwaitingSizeZ()) return handlePortalSize(player, data, msg, 'z');
@@ -154,6 +156,19 @@ public class BuilderInputHandler {
             player.sendMessage("§cPartícula inválida.");
         }
         data.setAwaitingParticleInput(false);
+        return true;
+    }
+
+    private static boolean handleAmbientParticleInterval(Player player, GateBuilderData data, String msg) {
+        try {
+            long ticks = Long.parseLong(msg);
+            if (ticks < 1 || ticks > 72000) throw new NumberFormatException();
+            data.setAmbientParticleIntervalTicks(ticks);
+            player.sendMessage("\u00a7aIntervalo das particulas ambiente definido para: \u00a7f" + ticks + " ticks");
+        } catch (NumberFormatException exception) {
+            player.sendMessage("\u00a7cUse um numero inteiro entre 1 e 72000 ticks.");
+        }
+        data.setAwaitingAmbientParticleInterval(false);
         return true;
     }
 

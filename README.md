@@ -1,159 +1,147 @@
-<div id="top">
+# KGates
 
-<!-- HEADER STYLE: CLASSIC -->
+## Resumo
 
-<div align="center">
+KGates é um plugin para servidores Minecraft Spigot que permite criar portais de teletransporte e warps. Os portais são configurados por uma interface gráfica dentro do jogo e podem ter direção, formato, tamanho, condições de acesso, comandos, partículas, sons e tempo de espera personalizados.
 
-# KGATES
+## Funcionalidades
 
-<em>Seamless Journeys, Limitless Possibilities, Powered by Innovation</em>
+- Criação e edição de portais por menus interativos.
+- Portais de mão única (A → B) ou de duas direções (A ↔ B).
+- Áreas de ativação em formato de esfera, cilindro ou retângulo.
+- Condições de acesso com placeholders e operadores de comparação.
+- Partículas e sons de ambiente, entrada, saída e ativação.
+- Execução de comandos quando o jogador atravessa um portal.
+- Cooldown individual por jogador e portal.
+- Sistema de warps com criação, remoção e autocompletar.
+- Persistência automática em arquivos YAML.
 
-<!-- BADGES -->
+## Requisitos
 
-<img src="https://img.shields.io/github/last-commit/ErikK81/KGates?style=flat&logo=git&logoColor=white&color=0080ff" alt="last-commit">
-<img src="https://img.shields.io/github/languages/top/ErikK81/KGates?style=flat&color=0080ff" alt="repo-top-language">
-<img src="https://img.shields.io/github/languages/count/ErikK81/KGates?style=flat&color=0080ff" alt="repo-language-count">
+- Java 21 ou mais recente.
+- Servidor compatível com Spigot API 1.21 (o projeto é compilado com a versão 1.21.8).
+- [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) 2.11.6 ou compatível.
+- Maven 3.9 ou mais recente, somente para compilar o projeto.
 
-<em>Built with the tools and technologies:</em>
+## Instalação
 
-<img src="https://img.shields.io/badge/Markdown-000000.svg?style=flat&logo=Markdown&logoColor=white" alt="Markdown">
-<img src="https://img.shields.io/badge/XML-005FAD.svg?style=flat&logo=XML&logoColor=white" alt="XML">
+### Usando um arquivo compilado
 
-</div>
-<br>
+1. Instale o PlaceholderAPI na pasta `plugins` do servidor.
+2. Coloque o arquivo `kgates-1.0-SNAPSHOT.jar` na mesma pasta.
+3. Inicie ou reinicie o servidor.
+4. Confirme no console a mensagem `KGates carregado com sucesso!`.
 
----
+Os dados serão criados em `plugins/KGates/` na primeira inicialização.
 
-## Table of Contents
+### Compilando o código-fonte
 
-* [Overview](#overview)
-* [Getting Started](#getting-started)
-
-  * [Prerequisites](#prerequisites)
-  * [Installation](#installation)
-  * [Usage](#usage)
-  * [Testing](#testing)
-* [Features](#features)
-* [Project Structure](#project-structure)
-* [Commands](#commands)
-
----
-
-## Overview
-
-KGates is a versatile Minecraft plugin that empowers server admins to create and manage dynamic teleportation gates with rich customization options. It supports complex access conditions, intuitive GUI-based configuration, and seamless player interactions, transforming world navigation.
-
-**Why KGates?**
-
-This project streamlines the creation and management of teleportation portals, making complex setups accessible and reliable. The core features include:
-
-* 🎮 **🛠️ Custom Gate Builder:** An interactive GUI for designing and editing portals with ease.
-* 🚦 **🔑 Condition-Based Activation:** Supports dynamic gate behaviors based on player-specific conditions.
-* 🧙 **⚙️ Command & Permission Control:** Simplifies access management with integrated commands and permissions.
-* 💾 **📁 Persistent Data Management:** Ensures gate configurations are saved and loaded seamlessly.
-* ✨ **🎉 Player Experience Enhancements:** Includes visual and sound effects for immersive teleportation.
-
----
-
-## Features
-
-|     | Component         | Details                                                                                                                                                                                                                                                      |
-| :-- | :---------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ⚙️  | **Architecture**  | <ul><li>Modular plugin structure for Bukkit/Spigot servers</li><li>Uses Java classes organized into packages</li><li>Follows typical Minecraft plugin architecture with main plugin class, event listeners, commands, and configuration management</li></ul> |
-| 🔩  | **Code Quality**  | <ul><li>Uses Maven for build management and dependency resolution</li><li>Code adheres to Java conventions, with clear separation of concerns</li><li>Includes comments and JavaDoc for public classes and methods</li></ul>                                 |
-| 📄  | **Documentation** | <ul><li>Basic README with setup instructions</li><li>plugin.yml defines commands, permissions, and plugin info</li><li>Some inline comments; lacks comprehensive user documentation</li></ul>                                                                |
-| 🔌  | **Integrations**  | <ul><li>Depends on **PlaceholderAPI** for dynamic placeholders</li><li>Uses **Spigot API** for server interactions</li><li>Integrates with YAML and XML configs for settings</li></ul>                                                                       |
-| 🧩  | **Modularity**    | <ul><li>Separate classes for commands, events, and utilities</li><li>Uses plugin.yml for command registration</li><li>Potential for plugin extension via API</li></ul>                                                                                       |
-| 🧪  | **Testing**       | <ul><li>No explicit unit or integration tests found in the codebase</li><li>Potential reliance on manual testing or server environment testing</li></ul>                                                                                                     |
-| ⚡️  | **Performance**   | <ul><li>Lightweight plugin, minimal overhead</li><li>Uses event-driven architecture to optimize server performance</li></ul>                                                                                                                                 |
-| 🛡️ | **Security**      | <ul><li>Defines permissions in plugin.yml for access control</li><li>Input validation not extensively documented; potential for improvement</li></ul>                                                                                                        |
-| 📦  | **Dependencies**  | <ul><li>Primary dependency: **Spigot API**</li><li>Additional: **PlaceholderAPI** for placeholders</li><li>Managed via Maven (`pom.xml`)</li></ul>                                                                                                           |
-
----
-
-## Project Structure
+Na raiz do projeto, execute:
 
 ```sh
-└── KGates/
-    ├── README.md
-    ├── pom.xml
-    └── src
-        └── main
+mvn clean package
 ```
 
----
+O JAR será gerado em `target/kgates-1.0-SNAPSHOT.jar`. As APIs do Spigot e do PlaceholderAPI são dependências fornecidas pelo servidor e não são incluídas dentro do JAR.
 
-## Getting Started
+## Uso rápido
 
-### Prerequisites
+Para criar um portal:
 
-This project requires the following dependencies:
+1. Execute `/kgate create <id>`.
+2. No editor, escolha o tipo e defina os pontos A e B clicando nos respectivos itens e depois em um bloco do mundo.
+3. Ajuste formato, dimensões, efeitos, condições, comandos e cooldown, se necessário.
+4. Clique em **Salvar portal**.
+5. Entre na área do ponto A para ser transportado ao ponto B. Em portais de duas direções, o ponto B também leva ao ponto A.
 
-* **Programming Language:** Java
-* **Package Manager:** Maven
+O ID é convertido para letras minúsculas. Para editar um portal posteriormente, use `/kgate edit <id>`; para visualizar os portais existentes, use `/kgate browse`.
 
-### Installation
+## Comandos
 
-Build KGates from the source and install dependencies:
+### Portais
 
-1. **Clone the repository:**
+Todos os comandos abaixo só podem ser executados por jogadores com a permissão `kgates.admin`.
 
-   ```sh
-   ❯ git clone https://github.com/ErikK81/KGates
-   ```
+| Comando | Descrição |
+| --- | --- |
+| `/kgate create <id>` | Inicia a criação de um portal e abre o editor. |
+| `/kgate edit <id>` | Abre um portal existente no editor. |
+| `/kgate remove <id>` | Remove um portal. |
+| `/kgate browse` | Abre a lista de portais existentes. |
+| `/kgate go <id> <1/2>` | Teleporta o administrador diretamente ao ponto 1 ou 2. |
 
-2. **Navigate to the project directory:**
+### Warps
 
-   ```sh
-   ❯ cd KGates
-   ```
+| Comando | Descrição | Permissão |
+| --- | --- | --- |
+| `/warp <local>` | Teleporta para um warp. | `kgates.warp` |
+| `/warp create <local>` | Cria um warp na posição atual. | `kgates.warp.admin` |
+| `/warp remove <local>` | Remove um warp. | `kgates.warp.admin` |
 
-3. **Install the dependencies:**
+Nomes de warps aceitam de 1 a 32 letras, números, `_` ou `-`.
 
-**Using [maven](https://maven.apache.org/):**
+## Permissões
+
+| Permissão | Padrão | Finalidade |
+| --- | --- | --- |
+| `kgates.admin` | Operadores | Criar, editar, remover, listar e visitar pontos de portais. |
+| `kgates.warp` | Todos | Usar warps existentes. |
+| `kgates.warp.admin` | Operadores | Criar e remover warps. |
+
+## Editor de portais
+
+O menu principal reúne estas configurações:
+
+- **Tipo:** uma direção ou duas direções.
+- **Pontos A e B:** blocos que representam as duas extremidades.
+- **Formato:** esfera, cilindro ou retângulo, com dimensões X, Y e Z aplicáveis.
+- **Comandos:** comandos executados pelo jogador na ativação; devem ser informados sem a `/` inicial. Use o prefixo `console:` para executá-los pelo console e `%player%` para inserir o nome do jogador.
+- **Condições:** expressões que precisam ser verdadeiras para permitir a passagem.
+- **Efeitos:** partículas de ambiente, entrada e saída, quantidades, velocidades, intervalo e sons.
+- **Tempo de espera:** cooldown em ticks; 20 ticks correspondem aproximadamente a 1 segundo.
+
+Algumas opções solicitam um valor pelo chat. Digite `cancelar` para abandonar uma entrada pendente e voltar ao editor.
+
+## Condições e placeholders
+
+As condições aceitam placeholders do PlaceholderAPI e os operadores `>=`, `<=`, `!=`, `==`, `>` e `<`. Exemplos:
+
+```text
+%player_health% >= 10
+%player_level% > 5
+%player_world% == world
+```
+
+Todas as condições configuradas no portal precisam ser atendidas. Os placeholders disponíveis dependem das expansões instaladas no PlaceholderAPI.
+
+## Armazenamento
+
+O plugin mantém seus dados em:
+
+- `plugins/KGates/gates.yml`: portais e todas as suas configurações.
+- `plugins/KGates/warps.yml`: posições dos warps.
+
+As alterações são salvas ao concluir ou remover um portal, ao criar ou remover um warp e quando o plugin é desativado. Faça backup desses arquivos antes de editá-los manualmente. Não há opções gerais de configuração no código atual, embora o plugin prepare um `config.yml` caso esse recurso seja adicionado no futuro.
+
+## Estrutura do projeto
+
+```text
+src/main/java/me/erik/kgates/
+├── builder/       # Editor visual e entrada de dados pelo chat
+├── commands/      # Comandos de warps
+├── conditions/    # Condições e integração com PlaceholderAPI
+├── listeners/     # Detecção e ativação dos portais
+├── manager/       # Modelos, carregamento e persistência
+├── Commands.java  # Comandos administrativos dos portais
+└── KGates.java    # Inicialização do plugin
+```
+
+## Desenvolvimento
+
+O projeto usa Maven e não possui testes automatizados no momento. Para verificar a compilação:
 
 ```sh
-❯ mvn install
+mvn clean package
 ```
 
-### Usage
-
-Run the project with:
-
-**Using [maven](https://maven.apache.org/):**
-
-```sh
-mvn exec:java
-```
-
-### Testing
-
-Kgates uses the {**test_framework**} test framework. Run the test suite with:
-
-**Using [maven](https://maven.apache.org/):**
-
-```sh
-mvn test
-```
-
----
-
-## Commands
-
-KGates provides the following plugin commands:
-
-| Command                 | Description                      | Permission      |
-| ----------------------- | -------------------------------- | --------------- |
-| `/kgates create <name>` | Creates a new teleportation gate | `kgates.create` |
-| `/kgates delete <name>` | Deletes an existing gate         | `kgates.delete` |
-| `/kgates edit <name>`   | Opens the GUI to edit a gate     | `kgates.edit`   |
-| `/kgates list`          | Lists all registered gates       | `kgates.list`   |
-| `/kgates reload`        | Reloads plugin configuration     | `kgates.reload` |
-
-*Permissions are defined in `plugin.yml` and can be configured per server requirements.*
-
----
-
-<div align="left"><a href="#top">⬆ Return</a></div>
-
----
+Como o funcionamento depende dos eventos e das APIs do servidor, recomenda-se também testar manualmente o JAR em uma instância Spigot compatível, com o PlaceholderAPI instalado.

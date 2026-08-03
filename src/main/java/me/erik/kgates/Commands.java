@@ -124,11 +124,6 @@ public class Commands implements CommandExecutor, TabCompleter {
             return;
         }
 
-        if (!builderManager.startEditing(id)) {
-            player.sendMessage(ChatColor.RED + "This portal is currently being edited by someone else.");
-            return;
-        }
-
         player.sendMessage(ChatColor.AQUA + "Opening GUI to edit gate: " + ChatColor.YELLOW + id);
         GateBuilderData builder = GateBuilderData.fromGate(player.getUniqueId(), gate);
         builderManager.startBuilding(builder);

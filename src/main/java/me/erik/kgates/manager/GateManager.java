@@ -9,22 +9,26 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.logging.Level;
 
 public class GateManager {
 
     private final Map<String, GateData> gates = new HashMap<>();
     private final File file;
     private final YamlConfiguration config;
+    private final KGates plugin;
 
     public GateManager(KGates plugin) {
+        this.plugin = plugin;
         this.file = new File(plugin.getDataFolder(), "gates.yml");
         if (!file.exists()) {
             try {
-                file.getParentFile().mkdirs();
-                file.createNewFile();
+                if (!file.getParentFile().exists() && !file.getParentFile().mkdirs()) {
+                    throw new IOException("Could not create plugin data directory");
+                }
+                if (!file.createNewFile()) throw new IOException("Could not create gates.yml");
             } catch (IOException e) {
-                plugin.getLogger().severe("Erro ao criar gates.yml");
-                e.printStackTrace();
+                plugin.getLogger().log(Level.SEVERE, "Erro ao criar gates.yml", e);
             }
         }
         this.config = YamlConfiguration.loadConfiguration(file);
@@ -57,6 +61,7 @@ public class GateManager {
         gate.setExitParticleSpeed(builder.getExitParticleSpeed());
         gate.setAmbientParticleCount(builder.getAmbientParticleCount());
         gate.setAmbientParticleSpeed(builder.getAmbientParticleSpeed());
+        gate.setAmbientParticleIntervalTicks(builder.getAmbientParticleIntervalTicks());
         gate.setAmbientSound(builder.getAmbientSound());
         gate.setActivationSound(builder.getActivationSound());
         gate.setActivationSoundVolume(builder.getSoundVolume());
@@ -72,22 +77,24 @@ public class GateManager {
             gate.setCommands(builder.getCommands());
         }
 
-        gates.put(gate.getId().toLowerCase(), gate);
+        gates.put(normalize(gate.getId()), gate);
         saveAll();
     }
 
     public GateData getGate(String id) {
-        return gates.get(id.toLowerCase());
+        return id == null ? null : gates.get(normalize(id));
     }
 
     public void removeGate(String id) {
-        gates.remove(id.toLowerCase());
-        config.set("portals." + id.toLowerCase(), null);
+        if (id == null) return;
+        String normalizedId = normalize(id);
+        gates.remove(normalizedId);
+        config.set("portals." + normalizedId, null);
         saveFile();
     }
 
     public Collection<GateData> getAllGates() {
-        return gates.values();
+        return Collections.unmodifiableCollection(gates.values());
     }
 
     public void saveAll() {
@@ -95,7 +102,7 @@ public class GateManager {
             // Keep the existing YAML untouched when an old portal references a world
             // that is not currently loaded. It can be recovered after that world loads.
             if (!gate.hasResolvedLocations()) continue;
-            config.set("portals." + gate.getId(), gate.serialize());
+            config.set("portals." + normalize(gate.getId()), gate.serialize());
         }
         saveFile();
     }
@@ -104,7 +111,7 @@ public class GateManager {
         try {
             config.save(file);
         } catch (IOException e) {
-            e.printStackTrace();
+            plugin.getLogger().log(Level.SEVERE, "Erro ao salvar gates.yml", e);
         }
     }
 
@@ -115,7 +122,11 @@ public class GateManager {
         for (String key : portalsSection.getKeys(false)) {
             ConfigurationSection gateSection = portalsSection.getConfigurationSection(key);
             if (gateSection != null) {
-                gates.put(key.toLowerCase(), GateData.deserialize(gateSection));
+                try {
+                    gates.put(normalize(key), GateData.deserialize(gateSection));
+                } catch (RuntimeException exception) {
+                    plugin.getLogger().log(Level.WARNING, "Portal invalido ignorado: " + key, exception);
+                }
             }
         }
     }
@@ -129,5 +140,9 @@ public class GateManager {
         if (type == GateData.PortalType.TWO_WAY) {
             to.setType(type);
         }
+    }
+
+    private static String normalize(String id) {
+        return id.toLowerCase(Locale.ROOT);
     }
 }

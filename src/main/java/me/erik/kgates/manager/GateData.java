@@ -36,6 +36,7 @@ public class GateData {
     private Particle ambientParticle = Particle.FLAME;
     private int ambientParticleCount = 10;
     private double ambientParticleSpeed = 0.5;
+    private long ambientParticleIntervalTicks = 10;
     private Sound ambientSound = Sound.ENTITY_ENDERMAN_TELEPORT;
     private float ambientSoundVolume = 1.0f;
     private float ambientSoundPitch = 1.0f;
@@ -81,7 +82,9 @@ public class GateData {
     public List<SimpleGateCondition> getConditions() { return conditions; }
     public void addCondition(SimpleGateCondition condition) { conditions.add(condition); }
     public List<String> getCommands() { return commands; }
-    public void setCommands(List<String> commands) { this.commands = commands; }
+    public void setCommands(List<String> commands) {
+        this.commands = commands == null ? new ArrayList<>() : new ArrayList<>(commands);
+    }
     public void addCommand(String cmd) { this.commands.add(cmd); }
     public void removeCommand(int index) { if (index >= 0 && index < commands.size()) commands.remove(index); }
 
@@ -92,6 +95,8 @@ public class GateData {
     public void setAmbientParticleCount(int ambientParticleCount) { this.ambientParticleCount = ambientParticleCount; }
     public double getAmbientParticleSpeed() { return ambientParticleSpeed; }
     public void setAmbientParticleSpeed(double ambientParticleSpeed) { this.ambientParticleSpeed = ambientParticleSpeed; }
+    public long getAmbientParticleIntervalTicks() { return ambientParticleIntervalTicks; }
+    public void setAmbientParticleIntervalTicks(long value) { ambientParticleIntervalTicks = Math.max(1L, value); }
     public Sound getAmbientSound() { return ambientSound; }
     public void setAmbientSound(Sound ambientSound) { this.ambientSound = ambientSound; }
     public float getAmbientSoundVolume() { return ambientSoundVolume; }
@@ -142,6 +147,7 @@ public class GateData {
         map.put("ambientParticle", ambientParticle.name());
         map.put("ambientParticleCount", ambientParticleCount);
         map.put("ambientParticleSpeed", ambientParticleSpeed);
+        map.put("ambientParticleIntervalTicks", ambientParticleIntervalTicks);
         map.put("ambientSound", ambientSound != null ? ambientSound.name() : null);
         map.put("ambientSoundVolume", ambientSoundVolume);
         map.put("ambientSoundPitch", ambientSoundPitch);
@@ -194,10 +200,13 @@ public class GateData {
         gate.setSizeZ(section.getDouble("sizeZ", legacySize));
         gate.setCooldownTicks(section.getLong("cooldownTicks", 20));
 
-        List<Map<String, Object>> condList = (List<Map<String, Object>>) section.getList("conditions");
-        if (condList != null)
-            for (Map<String, Object> map : condList)
-                gate.addCondition(SimpleGateCondition.deserialize(map));
+        List<?> condList = section.getList("conditions");
+        if (condList != null) {
+            for (Object serializedCondition : condList) {
+                SimpleGateCondition condition = SimpleGateCondition.deserialize(serializedCondition);
+                if (condition != null) gate.addCondition(condition);
+            }
+        }
 
         gate.setCommands(section.getStringList("commands"));
 
@@ -207,6 +216,7 @@ public class GateData {
         } catch (Exception ignored) {}
         gate.setAmbientParticleCount(section.getInt("ambientParticleCount", 10));
         gate.setAmbientParticleSpeed(section.getDouble("ambientParticleSpeed", 0.5));
+        gate.setAmbientParticleIntervalTicks(section.getLong("ambientParticleIntervalTicks", 10));
 
         String ambientSoundName = section.getString("ambientSound");
         if (ambientSoundName != null && !ambientSoundName.isEmpty()) {

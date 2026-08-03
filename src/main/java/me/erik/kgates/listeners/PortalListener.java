@@ -11,24 +11,35 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-public record PortalListener(GateManager gateManager) implements Listener {
+public final class PortalListener implements Listener {
 
-    private static final Map<GateData, Map<Player, Long>> portalCooldowns = new HashMap<>();
+    private final GateManager gateManager;
+    private final Map<UUID, Map<String, Long>> portalCooldowns = new HashMap<>();
+    private long ambientEffectTick;
+
+    public PortalListener(GateManager gateManager) {
+        this.gateManager = Objects.requireNonNull(gateManager, "gateManager");
+    }
 
     public void startAmbientEffects(JavaPlugin plugin) {
         plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
+            ambientEffectTick++;
             for (GateData gate : gateManager.getAllGates()) {
+                if (!gate.hasResolvedLocations()) continue;
+                if (ambientEffectTick % gate.getAmbientParticleIntervalTicks() != 0) continue;
                 spawnAmbientParticles(gate.getLoc1(), gate);
                 spawnAmbientParticles(gate.getLoc2(), gate);
             }
-        }, 10L, 10L);
+        }, 1L, 1L);
     }
 
     @EventHandler
@@ -37,13 +48,20 @@ public record PortalListener(GateManager gateManager) implements Listener {
         Location to = event.getTo();
         if (to == null) return;
 
-        long currentTick = System.currentTimeMillis() / 50;
+        Location from = event.getFrom();
+        if (from.getWorld() == to.getWorld()
+                && from.getBlockX() == to.getBlockX()
+                && from.getBlockY() == to.getBlockY()
+                && from.getBlockZ() == to.getBlockZ()) return;
+
+        long now = System.currentTimeMillis();
+        Map<String, Long> playerCooldowns = portalCooldowns.computeIfAbsent(player.getUniqueId(), ignored -> new HashMap<>());
 
         for (GateData gate : gateManager.getAllGates()) {
             // Verifica cooldown
-            Map<Player, Long> cooldowns = portalCooldowns.computeIfAbsent(gate, k -> new HashMap<>());
-            long lastUse = cooldowns.getOrDefault(player, -gate.getCooldownTicks());
-            if (currentTick - lastUse < gate.getCooldownTicks()) continue;
+            long cooldownMillis = Math.max(0L, gate.getCooldownTicks()) * 50L;
+            long lastUse = playerCooldowns.getOrDefault(gate.getId(), Long.MIN_VALUE);
+            if (lastUse != Long.MIN_VALUE && now - lastUse < cooldownMillis) continue;
 
             // Verifica proximidade e condições
             boolean nearLoc1 = isInsidePortal(to, gate.getLoc1(), gate);
@@ -59,10 +77,10 @@ public record PortalListener(GateManager gateManager) implements Listener {
                     : teleportPlayer(player, gate.getLoc1(), gate);
             if (!teleported) continue;
 
-            cooldowns.put(player, currentTick);
+            playerCooldowns.put(gate.getId(), now);
 
             // Se ONE_WAY, não verifica mais
-            if (gate.getType() == GateData.PortalType.ONE_WAY) break;
+            break;
         }
     }
 
@@ -107,6 +125,11 @@ public record PortalListener(GateManager gateManager) implements Listener {
             }
         }
         return true;
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        portalCooldowns.remove(event.getPlayer().getUniqueId());
     }
 
     private static void spawnParticles(Location location, Particle particle, int count, double speed) {
